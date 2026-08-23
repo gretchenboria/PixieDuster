@@ -344,11 +344,11 @@ elif st.session_state.step == 2:
     
     # Render multiple choice questions
     if isinstance(st.session_state.questions_data, list):
-                    questions = st.session_state.questions_data
-                elif isinstance(st.session_state.questions_data, dict):
-                    questions = st.session_state.questions_data.get('questions', [])
-                else:
-                    questions = []
+        questions = st.session_state.questions_data
+    elif isinstance(st.session_state.questions_data, dict):
+        questions = st.session_state.questions_data.get('questions', [])
+    else:
+        questions = []
     for i, q in enumerate(questions):
         st.markdown(f"**{i+1}. {q['question']}**")
         ans = st.radio(f"Options for Q{i+1}", q['options'], key=f"q_{i}", label_visibility="collapsed")
