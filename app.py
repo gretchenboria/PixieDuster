@@ -4,6 +4,7 @@ import os
 import json
 import textwrap
 from dotenv import load_dotenv
+import time
 import base64
 
 st.set_page_config(page_title="PixieDuster", layout="centered", page_icon="logo.png")
