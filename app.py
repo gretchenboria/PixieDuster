@@ -288,7 +288,15 @@ if st.session_state.step == 1:
                     )
                     
                     response_text = call_gemini(api_key, model_id, prompt_instruction, uploaded_files, require_json=True)
-                    st.session_state.questions_data = json.loads(response_text)
+                    clean_text = response_text.strip()
+                    if clean_text.startswith("```json"): clean_text = clean_text[7:]
+                    elif clean_text.startswith("```"): clean_text = clean_text[3:]
+                    if clean_text.endswith("```"): clean_text = clean_text[:-3]
+                    clean_text = clean_text.strip()
+                    try:
+                        st.session_state.questions_data = json.loads(clean_text)
+                    except json.JSONDecodeError as e:
+                        raise Exception("The AI generated a malformed JSON payload (likely an unescaped quote). Please click 'Begin Analysis' again to let it retry!")
                     status.update(label="✨ Analysis Complete!", state="complete", expanded=False)
                     time.sleep(0.5) 
                     
