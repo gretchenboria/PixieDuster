@@ -42,7 +42,23 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
             parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
     payload = {"contents": [{"parts": parts}]}
     if require_json:
-        payload["generationConfig"] = {"responseMimeType": "application/json"}
+        payload["generationConfig"] = {
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "question": {"type": "STRING"},
+                        "options": {
+                            "type": "ARRAY",
+                            "items": {"type": "STRING"}
+                        }
+                    },
+                    "required": ["question", "options"]
+                }
+            }
+        }
     response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload)
     response.raise_for_status()
     return response.json()["candidates"][0]["content"]["parts"][0]["text"]
