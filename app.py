@@ -1,0 +1,503 @@
+import streamlit as st
+from google import genai
+import os
+import json
+import textwrap
+from dotenv import load_dotenv
+import tempfile
+import time
+import base64
+from fpdf import FPDF
+
+# Load environment variables (for local development)
+load_dotenv(override=True)
+api_key = os.environ.get("GEMINI_API_KEY")
+
+if not api_key:
+    st.markdown("<h3 style='text-align: center; color: #ffd700;'>✨ PixieDuster Authentication</h3>", unsafe_allow_html=True)
+    st.write("To use this serverless app, please enter your Gemini API Key. It remains strictly in your browser and is never stored.")
+    api_key = st.text_input("Gemini API Key:", type="password")
+    if not api_key:
+        st.stop()
+
+client = genai.Client(api_key=api_key)
+model_id = 'gemini-3.6-flash'
+
+ANTI_AI_PROMPT_TEMPLATE = """# AI Persona & Style Guide
+
+## Core Directives
+1. **Human Authenticity:** Write with natural imperfections, active voice, and varied pacing. Never sound like a corporate robot or an over-enthusiastic AI.
+2. **Strict Vocabulary Bans:** Completely avoid AI "tells" (e.g., "delve," "tapestry," "crucial," "realm," "testament to," "in conclusion," "additionally").
+3. **Format Naturally:** Use paragraphs and natural transitions. Do not overuse bullet points, bolding, or symmetrical sentence structures. Do not summarize at the end.
+4. **Tone:** Speak directly and conversationally without hedging, generic positivity, or forced calls to action.
+
+## Author Persona & Terminology Standards
+{extracted_persona}
+"""
+
+st.set_page_config(page_title="PixieDuster", layout="centered", page_icon="logo.png")
+
+# Improved CSS for better contrast and layout
+st.markdown("""
+<style>
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Inter:wght@300;400;600&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3 {
+    font-family: 'Cinzel Decorative', cursive !important;
+    color: #ffd700 !important; 
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    text-align: center;
+}
+
+/* Background gradient - high contrast */
+.stApp {
+    background: radial-gradient(circle at top, #2b1845, #0f081c);
+    color: #ffffff;
+}
+
+/* Animated Pixie Dust Falling Effect */
+@keyframes dustFall {
+  from { background-position: 0px 0px; }
+  to { background-position: 0px 1000px; }
+}
+
+.stApp::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+        radial-gradient(2px 2px at 40px 60px, rgba(255,215,0,0.8), rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 150px 120px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
+        radial-gradient(3px 3px at 250px 200px, rgba(255,215,0,0.6), rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 300px 40px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 80px 250px, rgba(255,215,0,0.8), rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 350px 350px;
+    animation: dustFall 25s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Primary buttons */
+.stButton>button {
+    background: linear-gradient(135deg, #ffd700, #daa520) !important;
+    border: none !important;
+    border-radius: 30px !important;
+    font-family: 'Cinzel Decorative', cursive !important;
+    font-size: 1.2rem !important;
+    font-weight: bold !important;
+    padding: 10px 24px !important;
+    box-shadow: 0 4px 15px rgba(218, 165, 32, 0.4) !important;
+    transition: all 0.3s ease !important;
+    width: 100%;
+}
+
+.stButton>button, .stButton>button p, .stButton>button div {
+    color: #0f081c !important; /* Force dark text for contrast on the gold button */
+}
+
+.stButton>button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(218, 165, 32, 0.6) !important;
+    color: #000000 !important;
+}
+
+/* Uploader styling */
+[data-testid="stFileUploadDropzone"] {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 2px dashed #daa520;
+    border-radius: 15px;
+}
+[data-testid="stFileUploadDropzone"]:hover {
+    border-color: #ffd700;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Make inputs legible with high contrast */
+.stTextInput>div>div>input, .stSelectbox>div>div>div {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    color: white !important;
+    border: 1px solid rgba(218, 165, 32, 0.5) !important;
+}
+
+/* Chat container */
+[data-testid="stChatMessage"] {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    border-left: 4px solid #ffd700;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+/* Form headers and labels */
+label {
+    color: #e2d1f9 !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+}
+p {
+    font-size: 1.1rem;
+    color: #d1c4e9;
+}
+
+/* Mobile Optimization */
+@media (max-width: 768px) {
+    h1, h2, h3 { font-size: 1.6rem !important; }
+    h4 { font-size: 1.2rem !important; }
+    p, label, .stInfo { font-size: 0.95rem !important; }
+    
+    /* Scale logo down for mobile */
+    .mobile-logo { width: 180px !important; }
+    
+    .stButton>button {
+        font-size: 1rem !important;
+        padding: 12px !important;
+    }
+    
+    [data-testid="stChatMessage"] {
+        padding: 10px;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Helper for PDF generation
+def create_pdf(text, target_name):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Draw Certificate Border
+    pdf.set_draw_color(218, 165, 32)
+    pdf.set_line_width(1.5)
+    pdf.rect(10, 10, 190, 277)
+    pdf.rect(12, 12, 186, 273)
+    
+    # Logo
+    try:
+        pdf.image("logo.png", x=85, y=18, w=40)
+    except:
+        pass
+        
+    # Title
+    pdf.ln(45)
+    pdf.set_font("Times", 'B', 28)
+    pdf.set_text_color(218, 165, 32)
+    pdf.cell(0, 12, "Certificate of Persona", align='C')
+    pdf.ln(12)
+    
+    # Subtitle
+    pdf.set_font("Helvetica", 'I', 14)
+    pdf.set_text_color(50, 50, 50)
+    pdf.cell(0, 10, f"Officially cloned for: {target_name.upper()}", align='C')
+    pdf.ln(20)
+    
+    # Body text
+    pdf.set_font("Helvetica", size=10)
+    pdf.set_text_color(0, 0, 0)
+    
+    # Clean markdown
+    clean_text = text.replace('##', '').replace('#', '').replace('**', '').replace('*', '').replace('—', '-')
+    for line in clean_text.split('\n'):
+        safe_line = line.encode('latin-1', 'replace').decode('latin-1')
+        wrapped_lines = textwrap.wrap(safe_line, width=95)
+        if not wrapped_lines:
+            pdf.ln(6)
+        for w_line in wrapped_lines:
+            pdf.cell(0, 6, txt=w_line, ln=True, align='L')
+            
+    return bytes(pdf.output(dest='S'))
+
+# Encode logo for centered HTML
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
+logo_b64 = get_base64_image("logo.png")
+st.markdown(f"<div style='text-align: center; margin-bottom: 20px;'><img class='mobile-logo' src='data:image/png;base64,{logo_b64}' width='250' style='filter: drop-shadow(0px 0px 15px rgba(255,215,0,0.3));'></div>", unsafe_allow_html=True)
+
+st.markdown("<h3 style='text-align: center; margin-top: 0;'>Your Fairy Prompt-Mother</h3>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Upload writing samples and let the magic extract a unique voice for your AI companion.</p>", unsafe_allow_html=True)
+st.write("---")
+
+# State Management
+if 'step' not in st.session_state:
+    st.session_state.step = 1
+if 'questions_data' not in st.session_state:
+    st.session_state.questions_data = None
+if 'uploaded_genai_files' not in st.session_state:
+    st.session_state.uploaded_genai_files = []
+if 'final_prompt' not in st.session_state:
+    st.session_state.final_prompt = ""
+if 'target_name' not in st.session_state:
+    st.session_state.target_name = ""
+
+# --- STEP 1: UPLOAD ---
+if st.session_state.step == 1:
+    # Visual Process Steps (instead of plain text)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("<div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:center;'><i class='fa-solid fa-file-arrow-up fa-2x' style='color:#daa520; margin-bottom:10px;'></i><br><b>1. Upload</b><br><small>Drop text or PDFs.</small></div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown("<div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:center;'><i class='fa-solid fa-brain fa-2x' style='color:#daa520; margin-bottom:10px;'></i><br><b>2. Analyze</b><br><small>Answer AI questions.</small></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:center;'><i class='fa-solid fa-wand-magic-sparkles fa-2x' style='color:#daa520; margin-bottom:10px;'></i><br><b>3. Clone</b><br><small>Download the prompt.</small></div>", unsafe_allow_html=True)
+
+    st.write("---")
+    
+    # Clean, linear layout instead of erratic columns
+    st.markdown("### 1. Identify the Persona")
+    target_input = st.text_input(
+        "Whose voice are we cloning?", 
+        placeholder="e.g., Myself, A 1920s detective, My best friend Sarah..."
+    )
+    target_name = target_input if target_input else "the author"
+    
+    st.markdown("### 2. Upload Writing Samples")
+    with st.expander("💡 What makes a perfect sample?", expanded=True):
+        st.write("For the most accurate psychological profiling, we recommend **3 to 5 samples** across different contexts:")
+        st.markdown(
+            "- **Informal:** A chat log, casual email, or social media post.\n"
+            "- **Formal:** An essay, professional report, or dissertation.\n"
+            "- **Multimodal:** We accept text files, PDFs, and even **screenshots of handwriting or chat bubbles** (PNG/JPG)!"
+        )
+
+    uploaded_files = st.file_uploader(
+        "Drop files here", 
+        accept_multiple_files=True, 
+        type=['txt', 'pdf', 'png', 'jpg', 'jpeg'],
+        label_visibility="collapsed"
+    )
+
+    st.write("---")
+    analyze_btn = st.button("✨ Begin Analysis", use_container_width=True)
+
+    if analyze_btn:
+        if uploaded_files:
+            st.session_state.target_name = target_name
+            with st.status("✨ Casting Pixie Dust...", expanded=True) as status:
+                try:
+                    st.write("🔮 Inspecting your magical artifacts...")
+                    uploaded_genai_files = []
+                    with tempfile.TemporaryDirectory() as tmpdirname:
+                        for file in uploaded_files:
+                            temp_file_path = os.path.join(tmpdirname, file.name)
+                            with open(temp_file_path, "wb") as f:
+                                f.write(file.getvalue())
+                            genai_file = client.files.upload(file=temp_file_path, config={'display_name': file.name})
+                            uploaded_genai_files.append(genai_file)
+                    
+                    st.write("📜 Consulting the ancient grimoire...")
+                    for file in uploaded_genai_files:
+                        while file.state == "PROCESSING":
+                            time.sleep(1)
+                            file = client.files.get(name=file.name)
+                    
+                    st.session_state.uploaded_genai_files = uploaded_genai_files
+                    
+                    st.write("🗣️ Formulating multiple-choice riddles...")
+                    prompt_instruction = (
+                        f"Analyze the provided writing samples belonging to '{target_name}'. "
+                        "Formulate 3 highly specific multiple-choice questions to ask the author to uncover deep personality quirks, cognitive styles, or stylistic choices that aren't perfectly obvious from the text alone. "
+                        "Output the result STRICTLY as valid JSON with the following schema: "
+                        '{"questions": [{"question": "...", "options": ["...", "..."]}]}'
+                    )
+                    
+                    contents = [prompt_instruction] + uploaded_genai_files
+                    response = client.models.generate_content(
+                        model=model_id, 
+                        contents=contents,
+                        config={"response_mime_type": "application/json"}
+                    )
+                    
+                    st.session_state.questions_data = json.loads(response.text)
+                    status.update(label="✨ Analysis Complete!", state="complete", expanded=False)
+                    time.sleep(0.5) 
+                    
+                    st.session_state.step = 2
+                    st.rerun()
+                    
+                except Exception as e:
+                    status.update(label="❌ Spell Failed", state="error")
+                    st.error(f"An error occurred: {e}")
+        else:
+            st.warning("Please upload at least one writing sample.")
+
+# --- STEP 2: INTERACTIVE Q&A ---
+elif st.session_state.step == 2:
+    st.subheader("Clarifying the Magic")
+    st.write(f"To perfectly calibrate '{st.session_state.target_name}', please select the most accurate answers below:")
+    
+    user_selections = []
+    
+    # Render multiple choice questions
+    questions = st.session_state.questions_data.get('questions', [])
+    for i, q in enumerate(questions):
+        st.markdown(f"**{i+1}. {q['question']}**")
+        ans = st.radio(f"Options for Q{i+1}", q['options'], key=f"q_{i}", label_visibility="collapsed")
+        user_selections.append(f"Q: {q['question']}\nA: {ans}")
+        st.write("") # spacing
+        
+    user_answers_formatted = "\n\n".join(user_selections)
+    
+    st.write("---")
+    st.markdown("#### 🎭 Persona Tuning Levers")
+    humor_level = st.slider(
+        "Humor Level (Benign Violation Theory)", 
+        min_value=0, max_value=10, value=5, 
+        help="Adjusts how often the persona attempts humor using McGraw's Benign Violation Theory (simultaneously violating a norm while remaining benign/safe)."
+    )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Go Back"):
+            st.session_state.step = 1
+            st.rerun()
+    with col2:
+        if st.button("Generate Final Prompt"):
+            if user_answers_formatted:
+                with st.status("✨ Weaving the Final Persona...", expanded=True) as status:
+                    try:
+                        st.write("🧵 Spinning your answers into gold...")
+                        
+                        final_instruction = (
+                            f"Here are the original writing samples for '{st.session_state.target_name}'. "
+                            f"I also asked the user some multiple choice questions to refine the persona.\n"
+                            f"Here are their answers:\n{user_answers_formatted}\n\n"
+                            f"HUMOR INSTRUCTION: The user has set the humor level to {humor_level} out of 10. "
+                            "Based on Peter McGraw's Benign Violation Theory, formulate rules for this persona's humor. "
+                            "Humor happens when a situation is a violation, the situation is benign, and both occur simultaneously. "
+                            "Ensure the persona's pacing, wit, and conversational style reflect this specific level of humor, completely avoiding plain malignant jabs or asynchronous benign jokes.\n\n"
+                            "PSYCHOLOGICAL & EMPIRICAL PROFILING RUBRIC:\n"
+                            "You must evaluate the text and answers strictly using the following empirical rubrics:\n"
+                            "1. LIWC Lexical/Syntactic Fingerprint: Analyze Pronoun Orientation (1st person singular vs plural vs 2nd/3rd), Affective Processes (Positive vs Negative Emotion clusters), Cognitive Processes (Insight, Causation, Tentativeness vs Certainty), and Temporal Orientation (Past/Present/Future).\n"
+                            "2. The Big Five (OCEAN): Map linguistic data to Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism based on lexical richness, structure, social words, hedging, and self-doubt.\n"
+                            "3. Cognitive Style & Epistemic Stance: Is the author analytical or narrative? Do they rely on empirical citations, personal anecdotes, or axioms? Do they display dialectical thinking or binary/dogmatic thinking?\n"
+                            "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n\n"
+                            "Based on ALL of this, extract their unique terminology standard, recurring thought patterns, sentence structure, and overall persona. "
+                            "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
+                        )
+                        
+                        st.write("🧠 Evaluating Big Five personality traits (OCEAN)...")
+                        time.sleep(0.4)
+                        st.write("📊 Analyzing LIWC syntax and pronoun orientation...")
+                        time.sleep(0.4)
+                        st.write("🧩 Assessing cognitive style and epistemic stance...")
+                        time.sleep(0.4)
+                        st.write("🗣️ Mapping sociolinguistics and humor mechanics...")
+                        
+                        contents = [final_instruction] + st.session_state.uploaded_genai_files
+                        response = client.models.generate_content(model=model_id, contents=contents)
+                        extracted_persona = response.text
+                        
+                        st.write("🧹 Sweeping up the workshop (cleaning files)...")
+                        for file in st.session_state.uploaded_genai_files:
+                            try:
+                                client.files.delete(name=file.name)
+                            except:
+                                pass
+                        st.session_state.uploaded_genai_files = []
+                        
+                        st.session_state.final_prompt = ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted_persona)
+                        
+                        status.update(label="✨ Persona Woven Successfully!", state="complete", expanded=False)
+                        time.sleep(0.5)
+                        
+                        st.session_state.step = 3
+                        st.rerun()
+                    except Exception as e:
+                        status.update(label="❌ Spell Failed", state="error")
+                        st.error(f"An error occurred: {e}")
+            else:
+                st.warning("Please provide some answers to help the AI.")
+
+# --- STEP 3: FINAL DELIVERABLE & CHAT ---
+elif st.session_state.step == 3:
+    st.success("✨ Your Custom Persona Prompt is Ready! ✨")
+    
+    # Downloads
+    col_md, col_pdf, col_reset = st.columns(3)
+    
+    with col_md:
+        st.download_button(
+            label="Download as .MD",
+            data=st.session_state.final_prompt,
+            file_name="pixiedust_prompt.md",
+            mime="text/markdown"
+        )
+    with col_pdf:
+        pdf_data = create_pdf(st.session_state.final_prompt)
+        st.download_button(
+            label="Download as .PDF",
+            data=pdf_data,
+            file_name="pixiedust_prompt.pdf",
+            mime="application/pdf"
+        )
+    with col_reset:
+        if st.button("Start Over"):
+            st.session_state.clear()
+            st.rerun()
+
+    with st.expander("View Generated Persona Certificate", expanded=True):
+        import re
+        # Convert some basic markdown to HTML for the UI certificate
+        html_prompt = st.session_state.final_prompt.replace('\n', '<br>')
+        html_prompt = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_prompt)
+        html_prompt = re.sub(r'## (.*?)(<br>|$)', r'<h3 style="color:#b8860b; margin-top:15px;">\1</h3>', html_prompt)
+        html_prompt = re.sub(r'# (.*?)(<br>|$)', r'<h2 style="color:#b8860b; margin-top:20px;">\1</h2>', html_prompt)
+        
+        certificate_html = f"""
+        <div style="border: 4px double #daa520; padding: 40px; background: #fdfbf7; color: #1a1a1a; text-align: center; border-radius: 5px; box-shadow: inset 0 0 20px rgba(218,165,32,0.2);">
+           <img src="data:image/png;base64,{logo_b64}" width="120" style="margin-bottom: 20px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.2));">
+           <h1 style="color: #b8860b; font-family: 'Cinzel Decorative', serif; margin:0;">Certificate of Persona</h1>
+           <h3 style="color: #333; font-family: 'Inter', sans-serif; font-style: italic; font-weight: 300;">Officially cloned for: <b style="color: #b8860b;">{st.session_state.target_name.upper()}</b></h3>
+           <hr style="border: 1px solid #daa520; margin: 30px 0;">
+           <div style="text-align: left; font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6;">
+               {html_prompt}
+           </div>
+           <div style="margin-top: 40px; border-top: 1px dashed #daa520; padding-top: 20px;">
+               <p style="font-family: 'Cinzel Decorative', serif; color: #b8860b; font-size:18px;">✨ Authorized by PixieDuster ✨</p>
+           </div>
+        </div>
+        """
+        st.markdown(certificate_html, unsafe_allow_html=True)
+
+    st.write("---")
+    st.subheader("Test Your New Persona")
+    st.write("Chat with the AI using your newly generated system prompt to see how it sounds!")
+
+    if 'chat_history' not in st.session_state:
+        st.session_state['chat_history'] = []
+        
+    for message in st.session_state['chat_history']:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if user_input := st.chat_input("Say something to your AI companion..."):
+        st.session_state['chat_history'].append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
+            
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
+                    history_for_sdk = []
+                    for msg in st.session_state['chat_history'][:-1]:
+                        mapped_role = "user" if msg["role"] == "user" else "model"
+                        history_for_sdk.append({"role": mapped_role, "parts": [{"text": msg["content"]}]})
+                    
+                    chat = client.chats.create(
+                        model=model_id,
+                        config={"system_instruction": st.session_state.final_prompt},
+                        history=history_for_sdk if history_for_sdk else None
+                    )
+                    
+                    response = chat.send_message(user_input)
+                    st.markdown(response.text)
+                    st.session_state['chat_history'].append({"role": "assistant", "content": response.text})
+                except Exception as e:
+                    st.error(f"Chat error: {e}")
