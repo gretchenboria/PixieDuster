@@ -18,12 +18,13 @@ if "api_key" not in st.session_state:
 if not st.session_state.api_key:
     st.markdown("<h3 style='text-align: center; color: #ffd700;'><i class='fa-solid fa-wand-magic-sparkles'></i> PixieDuster Authentication</h3>", unsafe_allow_html=True)
     st.write("To use this serverless app, please enter your Gemini API Key. It remains strictly in your browser and is never stored.")
-    user_key = st.text_input("Gemini API Key:", type="password")
-    if user_key:
-        st.session_state.api_key = user_key
-        st.rerun()
-    else:
-        st.stop()
+    with st.form("auth_form"):
+        user_key = st.text_input("Gemini API Key:", type="password")
+        submitted = st.form_submit_button("Unlock PixieDuster", use_container_width=True)
+        if submitted and user_key:
+            st.session_state.api_key = user_key
+            st.rerun()
+    st.stop()
 
 api_key = st.session_state.api_key
 
