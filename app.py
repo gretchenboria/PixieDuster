@@ -1,12 +1,18 @@
 import streamlit as st
-from google import genai
+import requests
+import urllib.parse
 import os
 import json
 import textwrap
 from dotenv import load_dotenv
-import tempfile
 import time
 import base64
+
+# Pyodide/WebAssembly fix for fpdf2
+import urllib.request
+if not hasattr(urllib.request, 'HTTPSHandler'):
+    urllib.request.HTTPSHandler = type('HTTPSHandler', (object,), {})
+
 from fpdf import FPDF
 
 # Load environment variables (for local development)
@@ -20,8 +26,39 @@ if not api_key:
     if not api_key:
         st.stop()
 
-client = genai.Client(api_key=api_key)
 model_id = 'gemini-3.6-flash'
+
+def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    parts = [{"text": prompt}]
+    for file in uploaded_files:
+        mime_type = file.type
+        # If text, we can also pass as inline data if supported, but pdf/png are supported
+        # For simplicity, base64 encode all
+        b64_data = base64.b64encode(file.getvalue()).decode("utf-8")
+        parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
+    payload = {"contents": [{"parts": parts}]}
+    if require_json:
+        payload["generationConfig"] = {"responseMimeType": "application/json"}
+    response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload)
+    response.raise_for_status()
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+def chat_gemini(api_key, model, sys_prompt, history, user_input):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    contents = []
+    for msg in history:
+        r = "user" if msg["role"] == "user" else "model"
+        contents.append({"role": r, "parts": [{"text": msg["content"]}]})
+    contents.append({"role": "user", "parts": [{"text": user_input}]})
+    payload = {
+        "systemInstruction": {"parts": [{"text": sys_prompt}]},
+        "contents": contents
+    }
+    response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload)
+    response.raise_for_status()
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
 
 ANTI_AI_PROMPT_TEMPLATE = """# AI Persona & Style Guide
 
@@ -282,22 +319,8 @@ if st.session_state.step == 1:
             with st.status("✨ Casting Pixie Dust...", expanded=True) as status:
                 try:
                     st.write("🔮 Inspecting your magical artifacts...")
-                    uploaded_genai_files = []
-                    with tempfile.TemporaryDirectory() as tmpdirname:
-                        for file in uploaded_files:
-                            temp_file_path = os.path.join(tmpdirname, file.name)
-                            with open(temp_file_path, "wb") as f:
-                                f.write(file.getvalue())
-                            genai_file = client.files.upload(file=temp_file_path, config={'display_name': file.name})
-                            uploaded_genai_files.append(genai_file)
-                    
-                    st.write("📜 Consulting the ancient grimoire...")
-                    for file in uploaded_genai_files:
-                        while file.state == "PROCESSING":
-                            time.sleep(1)
-                            file = client.files.get(name=file.name)
-                    
-                    st.session_state.uploaded_genai_files = uploaded_genai_files
+                    # In memory upload for REST API
+                    st.session_state.uploaded_genai_files = uploaded_files
                     
                     st.write("🗣️ Formulating multiple-choice riddles...")
                     prompt_instruction = (
@@ -307,14 +330,8 @@ if st.session_state.step == 1:
                         '{"questions": [{"question": "...", "options": ["...", "..."]}]}'
                     )
                     
-                    contents = [prompt_instruction] + uploaded_genai_files
-                    response = client.models.generate_content(
-                        model=model_id, 
-                        contents=contents,
-                        config={"response_mime_type": "application/json"}
-                    )
-                    
-                    st.session_state.questions_data = json.loads(response.text)
+                    response_text = call_gemini(api_key, model_id, prompt_instruction, uploaded_files, require_json=True)
+                    st.session_state.questions_data = json.loads(response_text)
                     status.update(label="✨ Analysis Complete!", state="complete", expanded=False)
                     time.sleep(0.5) 
                     
@@ -390,17 +407,7 @@ elif st.session_state.step == 2:
                         time.sleep(0.4)
                         st.write("🗣️ Mapping sociolinguistics and humor mechanics...")
                         
-                        contents = [final_instruction] + st.session_state.uploaded_genai_files
-                        response = client.models.generate_content(model=model_id, contents=contents)
-                        extracted_persona = response.text
-                        
-                        st.write("🧹 Sweeping up the workshop (cleaning files)...")
-                        for file in st.session_state.uploaded_genai_files:
-                            try:
-                                client.files.delete(name=file.name)
-                            except:
-                                pass
-                        st.session_state.uploaded_genai_files = []
+                        extracted_persona = call_gemini(api_key, model_id, final_instruction, st.session_state.uploaded_genai_files, require_json=False)
                         
                         st.session_state.final_prompt = ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted_persona)
                         
@@ -485,19 +492,8 @@ elif st.session_state.step == 3:
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    history_for_sdk = []
-                    for msg in st.session_state['chat_history'][:-1]:
-                        mapped_role = "user" if msg["role"] == "user" else "model"
-                        history_for_sdk.append({"role": mapped_role, "parts": [{"text": msg["content"]}]})
-                    
-                    chat = client.chats.create(
-                        model=model_id,
-                        config={"system_instruction": st.session_state.final_prompt},
-                        history=history_for_sdk if history_for_sdk else None
-                    )
-                    
-                    response = chat.send_message(user_input)
-                    st.markdown(response.text)
-                    st.session_state['chat_history'].append({"role": "assistant", "content": response.text})
+                    response_text = chat_gemini(api_key, model_id, st.session_state.final_prompt, st.session_state['chat_history'][:-1], user_input)
+                    st.markdown(response_text)
+                    st.session_state['chat_history'].append({"role": "assistant", "content": response_text})
                 except Exception as e:
                     st.error(f"Chat error: {e}")
