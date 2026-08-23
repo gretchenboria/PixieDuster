@@ -16,7 +16,7 @@ if "api_key" not in st.session_state:
     st.session_state.api_key = os.environ.get("GEMINI_API_KEY")
 
 if not st.session_state.api_key:
-    st.markdown("<h3 style='text-align: center; color: #ffd700;'>✨ PixieDuster Authentication</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #ffd700;'><i class='fa-solid fa-wand-magic-sparkles'></i> PixieDuster Authentication</h3>", unsafe_allow_html=True)
     st.write("To use this serverless app, please enter your Gemini API Key. It remains strictly in your browser and is never stored.")
     user_key = st.text_input("Gemini API Key:", type="password")
     if user_key:
@@ -268,24 +268,26 @@ if st.session_state.step == 1:
     )
 
     st.write("---")
-    analyze_btn = st.button("✨ Begin Analysis", use_container_width=True)
+    analyze_btn = st.button("Begin Analysis", use_container_width=True)
 
     if analyze_btn:
         if uploaded_files:
             st.session_state.target_name = target_name
-            with st.status("✨ Casting Pixie Dust...", expanded=True) as status:
+            with st.status("Running Analysis...", expanded=True) as status:
                 try:
-                    st.write("🔮 Inspecting your magical artifacts...")
+                    st.markdown("<i class='fa-solid fa-magnifying-glass'></i> Inspecting your writing samples...", unsafe_allow_html=True)
                     # In memory upload for REST API
                     st.session_state.uploaded_genai_files = uploaded_files
                     
-                    st.write("🗣️ Formulating multiple-choice riddles...")
+                    st.markdown("<i class='fa-solid fa-list-check'></i> Formulating profiling questions...", unsafe_allow_html=True)
                     prompt_instruction = (
                         f"Analyze the provided writing samples belonging to '{target_name}'. "
                         "Formulate 3 highly specific multiple-choice questions to ask the author to uncover deep personality quirks, cognitive styles, or stylistic choices that aren't perfectly obvious from the text alone. "
                         "Output the result STRICTLY as valid JSON with the following schema: "
                         '{"questions": [{"question": "...", "options": ["...", "..."]}]}'
                     )
+
+                    time.sleep(0.1) # Force UI to render before blocking network request
                     
                     response_text = call_gemini(api_key, model_id, prompt_instruction, uploaded_files, require_json=True)
                     clean_text = response_text.strip()
@@ -297,14 +299,14 @@ if st.session_state.step == 1:
                         st.session_state.questions_data = json.loads(clean_text)
                     except json.JSONDecodeError as e:
                         raise Exception("The AI generated a malformed JSON payload (likely an unescaped quote). Please click 'Begin Analysis' again to let it retry!")
-                    status.update(label="✨ Analysis Complete!", state="complete", expanded=False)
+                    status.update(label="Analysis Complete!", state="complete", expanded=False)
                     time.sleep(0.5) 
                     
                     st.session_state.step = 2
                     st.rerun()
                     
                 except Exception as e:
-                    status.update(label="❌ Spell Failed", state="error")
+                    status.update(label="Analysis Failed", state="error")
                     st.error(f"An error occurred: {e}")
         else:
             st.warning("Please upload at least one writing sample.")
@@ -342,9 +344,9 @@ elif st.session_state.step == 2:
     with col2:
         if st.button("Generate Final Prompt"):
             if user_answers_formatted:
-                with st.status("✨ Weaving the Final Persona...", expanded=True) as status:
+                with st.status("Generating Final Persona...", expanded=True) as status:
                     try:
-                        st.write("🧵 Spinning your answers into gold...")
+                        st.markdown("<i class='fa-solid fa-pen-nib'></i> Compiling persona data...", unsafe_allow_html=True)
                         
                         final_instruction = (
                             f"Here are the original writing samples for '{st.session_state.target_name}'. "
@@ -364,32 +366,34 @@ elif st.session_state.step == 2:
                             "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
                         )
                         
-                        st.write("🧠 Evaluating Big Five personality traits (OCEAN)...")
+                        st.markdown("<i class='fa-solid fa-brain'></i> Evaluating Big Five personality traits...", unsafe_allow_html=True)
                         time.sleep(0.4)
-                        st.write("📊 Analyzing LIWC syntax and pronoun orientation...")
+                        st.markdown("<i class='fa-solid fa-chart-bar'></i> Analyzing LIWC syntax and pronoun orientation...", unsafe_allow_html=True)
                         time.sleep(0.4)
-                        st.write("🧩 Assessing cognitive style and epistemic stance...")
+                        st.markdown("<i class='fa-solid fa-puzzle-piece'></i> Assessing cognitive style...", unsafe_allow_html=True)
                         time.sleep(0.4)
-                        st.write("🗣️ Mapping sociolinguistics and humor mechanics...")
+                        st.markdown("<i class='fa-solid fa-comments'></i> Mapping sociolinguistics...", unsafe_allow_html=True)
+
+                        time.sleep(0.1) # Force UI to render before blocking network request
                         
                         extracted_persona = call_gemini(api_key, model_id, final_instruction, st.session_state.uploaded_genai_files, require_json=False)
                         
                         st.session_state.final_prompt = ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted_persona)
                         
-                        status.update(label="✨ Persona Woven Successfully!", state="complete", expanded=False)
+                        status.update(label="Persona Generated Successfully!", state="complete", expanded=False)
                         time.sleep(0.5)
                         
                         st.session_state.step = 3
                         st.rerun()
                     except Exception as e:
-                        status.update(label="❌ Spell Failed", state="error")
+                        status.update(label="Analysis Failed", state="error")
                         st.error(f"An error occurred: {e}")
             else:
                 st.warning("Please provide some answers to help the AI.")
 
 # --- STEP 3: FINAL DELIVERABLE & CHAT ---
 elif st.session_state.step == 3:
-    st.success("✨ Your Custom Persona Prompt is Ready! ✨")
+    st.success("Your Custom Persona Prompt is Ready!")
     
     # Downloads
     col_md, col_pdf, col_reset = st.columns(3)
@@ -424,7 +428,7 @@ elif st.session_state.step == 3:
                {html_prompt}
            </div>
            <div style="margin-top: 40px; border-top: 1px dashed #daa520; padding-top: 20px;">
-               <p style="font-family: 'Cinzel Decorative', serif; color: #b8860b; font-size:18px;">✨ Authorized by PixieDuster ✨</p>
+               <p style="font-family: 'Cinzel Decorative', serif; color: #b8860b; font-size:18px;"><i class='fa-solid fa-certificate'></i> Authorized by PixieDuster</p>
            </div>
         </div>
         """
