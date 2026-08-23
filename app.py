@@ -6,6 +6,8 @@ import textwrap
 from dotenv import load_dotenv
 import base64
 
+st.set_page_config(page_title="PixieDuster", layout="centered", page_icon="logo.png")
+
 # Load environment variables (for local development)
 load_dotenv(override=True)
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -63,7 +65,6 @@ ANTI_AI_PROMPT_TEMPLATE = """# AI Persona & Style Guide
 {extracted_persona}
 """
 
-st.set_page_config(page_title="PixieDuster", layout="centered", page_icon="logo.png")
 
 # Improved CSS for better contrast and layout
 st.markdown("""
