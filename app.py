@@ -10,14 +10,21 @@ st.set_page_config(page_title="PixieDuster", layout="centered", page_icon="logo.
 
 # Load environment variables (for local development)
 load_dotenv(override=True)
-api_key = os.environ.get("GEMINI_API_KEY")
 
-if not api_key:
+if "api_key" not in st.session_state:
+    st.session_state.api_key = os.environ.get("GEMINI_API_KEY")
+
+if not st.session_state.api_key:
     st.markdown("<h3 style='text-align: center; color: #ffd700;'>✨ PixieDuster Authentication</h3>", unsafe_allow_html=True)
     st.write("To use this serverless app, please enter your Gemini API Key. It remains strictly in your browser and is never stored.")
-    api_key = st.text_input("Gemini API Key:", type="password")
-    if not api_key:
+    user_key = st.text_input("Gemini API Key:", type="password")
+    if user_key:
+        st.session_state.api_key = user_key
+        st.rerun()
+    else:
         st.stop()
+
+api_key = st.session_state.api_key
 
 model_id = 'gemini-3.6-flash'
 
@@ -26,10 +33,12 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
     parts = [{"text": prompt}]
     for file in uploaded_files:
         mime_type = file.type
-        # If text, we can also pass as inline data if supported, but pdf/png are supported
-        # For simplicity, base64 encode all
-        b64_data = base64.b64encode(file.getvalue()).decode("utf-8")
-        parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
+        if mime_type.startswith("text/") or mime_type in ["application/json", "text/markdown", "text/csv"]:
+            text_data = file.getvalue().decode("utf-8", errors="replace")
+            parts.append({"text": f"\n\n--- Document: {file.name} ---\n{text_data}\n--- End Document ---\n"})
+        else:
+            b64_data = base64.b64encode(file.getvalue()).decode("utf-8")
+            parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
     payload = {"contents": [{"parts": parts}]}
     if require_json:
         payload["generationConfig"] = {"responseMimeType": "application/json"}
