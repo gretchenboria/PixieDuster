@@ -173,6 +173,13 @@ h1, h2, h3 {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
+
+/* Hide default Streamlit running animation */
+[data-testid="stStatusWidget"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+
 /* Make inputs legible with high contrast */
 .stTextInput>div>div>input, .stSelectbox>div>div>div {
     background-color: rgba(0, 0, 0, 0.5) !important;
@@ -291,11 +298,11 @@ if st.session_state.step == 1:
             st.session_state.target_name = target_name
             with st.status("Running Analysis...", expanded=True) as status:
                 try:
-                    st.markdown("<i class='fa-solid fa-magnifying-glass'></i> Inspecting your writing samples...", unsafe_allow_html=True)
+                    st.markdown("<i class='fa-solid fa-magnifying-glass fa-beat-fade' style='color:#ffd700;'></i> Inspecting your writing samples...", unsafe_allow_html=True)
                     # In memory upload for REST API
                     st.session_state.uploaded_genai_files = uploaded_files
                     
-                    st.markdown("<i class='fa-solid fa-list-check'></i> Formulating profiling questions...", unsafe_allow_html=True)
+                    st.markdown("<i class='fa-solid fa-list-check fa-flip' style='color:#ffd700;'></i> Formulating profiling questions...", unsafe_allow_html=True)
                     prompt_instruction = (
                         f"Analyze the provided writing samples belonging to '{target_name}'. "
                         "Formulate 3 highly specific multiple-choice questions to ask the author to uncover deep personality quirks, cognitive styles, or stylistic choices that aren't perfectly obvious from the text alone. "
@@ -362,7 +369,7 @@ elif st.session_state.step == 2:
             if user_answers_formatted:
                 with st.status("Generating Final Persona...", expanded=True) as status:
                     try:
-                        st.markdown("<i class='fa-solid fa-pen-nib'></i> Compiling persona data...", unsafe_allow_html=True)
+                        st.markdown("<i class='fa-solid fa-pen-nib fa-bounce' style='color:#ffd700;'></i> Compiling persona data...", unsafe_allow_html=True)
                         
                         final_instruction = (
                             f"Here are the original writing samples for '{st.session_state.target_name}'. "
@@ -382,13 +389,13 @@ elif st.session_state.step == 2:
                             "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
                         )
                         
-                        st.markdown("<i class='fa-solid fa-brain'></i> Evaluating Big Five personality traits...", unsafe_allow_html=True)
+                        st.markdown("<i class='fa-solid fa-brain fa-pulse' style='color:#ffd700;'></i> Evaluating Big Five personality traits...", unsafe_allow_html=True)
                         time.sleep(0.4)
-                        st.markdown("<i class='fa-solid fa-chart-bar'></i> Analyzing LIWC syntax and pronoun orientation...", unsafe_allow_html=True)
+                        st.markdown("<i class='fa-solid fa-chart-bar fa-beat' style='color:#ffd700;'></i> Analyzing LIWC syntax and pronoun orientation...", unsafe_allow_html=True)
                         time.sleep(0.4)
-                        st.markdown("<i class='fa-solid fa-puzzle-piece'></i> Assessing cognitive style...", unsafe_allow_html=True)
+                        st.markdown("<i class='fa-solid fa-puzzle-piece fa-spin' style='color:#ffd700;'></i> Assessing cognitive style...", unsafe_allow_html=True)
                         time.sleep(0.4)
-                        st.markdown("<i class='fa-solid fa-comments'></i> Mapping sociolinguistics...", unsafe_allow_html=True)
+                        st.markdown("<i class='fa-solid fa-comments fa-fade' style='color:#ffd700;'></i> Mapping sociolinguistics...", unsafe_allow_html=True)
 
                         time.sleep(0.1) # Force UI to render before blocking network request
                         
