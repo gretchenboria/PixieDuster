@@ -1,19 +1,10 @@
 import streamlit as st
 import requests
-import urllib.parse
 import os
 import json
 import textwrap
 from dotenv import load_dotenv
-import time
 import base64
-
-# Pyodide/WebAssembly fix for fpdf2
-import urllib.request
-if not hasattr(urllib.request, 'HTTPSHandler'):
-    urllib.request.HTTPSHandler = type('HTTPSHandler', (object,), {})
-
-from fpdf import FPDF
 
 # Load environment variables (for local development)
 load_dotenv(override=True)
@@ -203,51 +194,6 @@ p {
 </style>
 """, unsafe_allow_html=True)
 
-# Helper for PDF generation
-def create_pdf(text, target_name):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Draw Certificate Border
-    pdf.set_draw_color(218, 165, 32)
-    pdf.set_line_width(1.5)
-    pdf.rect(10, 10, 190, 277)
-    pdf.rect(12, 12, 186, 273)
-    
-    # Logo
-    try:
-        pdf.image("logo.png", x=85, y=18, w=40)
-    except:
-        pass
-        
-    # Title
-    pdf.ln(45)
-    pdf.set_font("Times", 'B', 28)
-    pdf.set_text_color(218, 165, 32)
-    pdf.cell(0, 12, "Certificate of Persona", align='C')
-    pdf.ln(12)
-    
-    # Subtitle
-    pdf.set_font("Helvetica", 'I', 14)
-    pdf.set_text_color(50, 50, 50)
-    pdf.cell(0, 10, f"Officially cloned for: {target_name.upper()}", align='C')
-    pdf.ln(20)
-    
-    # Body text
-    pdf.set_font("Helvetica", size=10)
-    pdf.set_text_color(0, 0, 0)
-    
-    # Clean markdown
-    clean_text = text.replace('##', '').replace('#', '').replace('**', '').replace('*', '').replace('—', '-')
-    for line in clean_text.split('\n'):
-        safe_line = line.encode('latin-1', 'replace').decode('latin-1')
-        wrapped_lines = textwrap.wrap(safe_line, width=95)
-        if not wrapped_lines:
-            pdf.ln(6)
-        for w_line in wrapped_lines:
-            pdf.cell(0, 6, txt=w_line, ln=True, align='L')
-            
-    return bytes(pdf.output(dest='S'))
 
 # Encode logo for centered HTML
 def get_base64_image(image_path):
@@ -435,14 +381,6 @@ elif st.session_state.step == 3:
             data=st.session_state.final_prompt,
             file_name="pixiedust_prompt.md",
             mime="text/markdown"
-        )
-    with col_pdf:
-        pdf_data = create_pdf(st.session_state.final_prompt)
-        st.download_button(
-            label="Download as .PDF",
-            data=pdf_data,
-            file_name="pixiedust_prompt.pdf",
-            mime="application/pdf"
         )
     with col_reset:
         if st.button("Start Over"):
