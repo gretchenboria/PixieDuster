@@ -412,26 +412,57 @@ elif st.session_state.step == 3:
 
     with st.expander("View Generated Persona Certificate", expanded=True):
         import re
-        # Convert some basic markdown to HTML for the UI certificate
-        html_prompt = st.session_state.final_prompt.replace('\n', '<br>')
-        html_prompt = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_prompt)
-        html_prompt = re.sub(r'## (.*?)(<br>|$)', r'<h3 style="color:#b8860b; margin-top:15px;">\1</h3>', html_prompt)
-        html_prompt = re.sub(r'# (.*?)(<br>|$)', r'<h2 style="color:#b8860b; margin-top:20px;">\1</h2>', html_prompt)
+        import html
         
-        certificate_html = f"""
-        <div style="border: 4px double #daa520; padding: 40px; background: #fdfbf7; color: #1a1a1a; text-align: center; border-radius: 5px; box-shadow: inset 0 0 20px rgba(218,165,32,0.2);">
-           <img src="data:image/png;base64,{logo_b64}" width="120" style="margin-bottom: 20px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.2));">
-           <h1 style="color: #b8860b; font-family: 'Cinzel Decorative', serif; margin:0;">Certificate of Persona</h1>
-           <h3 style="color: #333; font-family: 'Inter', sans-serif; font-style: italic; font-weight: 300;">Officially cloned for: <b style="color: #b8860b;">{st.session_state.target_name.upper()}</b></h3>
-           <hr style="border: 1px solid #daa520; margin: 30px 0;">
-           <div style="text-align: left; font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6;">
+        safe_prompt = html.escape(st.session_state.final_prompt)
+        
+        # Replace headers
+        html_prompt = re.sub(r'(?m)^### (.*?)$', r'<h4 style="color:#e2d1f9; margin-top:20px; font-family:\'Inter\', sans-serif !important;">\1</h4>', safe_prompt)
+        html_prompt = re.sub(r'(?m)^## (.*?)$', r'<h3 style="color:#ffd700 !important; border-bottom: 1px solid rgba(255,215,0,0.2); padding-bottom: 5px; margin-top:25px; text-align: left !important; font-family:\'Cinzel Decorative\', cursive !important;">\1</h3>', html_prompt)
+        html_prompt = re.sub(r'(?m)^# (.*?)$', r'<h2 style="color:#ffd700 !important; margin-top:30px; text-align:center !important; font-family:\'Cinzel Decorative\', cursive !important;">\1</h2>', html_prompt)
+        
+        # Replace bold
+        html_prompt = re.sub(r'\*\*(.*?)\*\*', r'<strong style="color: #ffd700;">\1</strong>', html_prompt)
+        
+        # Replace italics
+        html_prompt = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html_prompt)
+        
+        # Replace list items
+        html_prompt = re.sub(r'(?m)^\* (.*?)$', r'<li style="margin-left: 20px; margin-bottom: 8px;">\1</li>', html_prompt)
+        html_prompt = re.sub(r'(?m)^- (.*?)$', r'<li style="margin-left: 20px; margin-bottom: 8px;">\1</li>', html_prompt)
+        
+        # Wrap paragraphs
+        paragraphs = html_prompt.split('\n\n')
+        wrapped_paragraphs = []
+        for p in paragraphs:
+            if '<h' in p or '<li' in p:
+                wrapped_paragraphs.append(p.replace('\n', ''))
+            else:
+                wrapped_paragraphs.append(f'<p style="margin-bottom: 15px; font-family:\'Inter\', sans-serif !important;">{p.replace(chr(10), "<br>")}</p>')
+        
+        html_prompt = "".join(wrapped_paragraphs)
+        
+        certificate_html = f'''
+        <div style="border: 2px solid rgba(255,215,0,0.5); padding: 40px; background: linear-gradient(135deg, #160a24, #2b1845); color: #ffffff; text-align: left; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,215,0,0.05);">
+           
+           <div style="text-align: center; margin-bottom: 30px;">
+               <img src="data:image/png;base64,{logo_b64}" width="120" style="margin-bottom: 15px; filter: drop-shadow(0px 0px 10px rgba(255,215,0,0.4));">
+               <h1 style="color: #ffd700 !important; font-family: 'Cinzel Decorative', cursive !important; margin:0; font-size: 32px; text-shadow: 0 0 10px rgba(255,215,0,0.5) !important; text-align: center !important;">CERTIFICATE OF PERSONA</h1>
+               <p style="font-family: 'Inter', sans-serif !important; font-size: 16px; color: #d1c4e9 !important; margin-top: 10px; text-align: center !important;">Officially cloned for: <b style="color: #ffd700;">{st.session_state.target_name.upper()}</b></p>
+           </div>
+           
+           <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, rgba(255,215,0,0.5), transparent); margin: 30px 0;">
+           
+           <div style="font-family: 'Inter', sans-serif !important; font-size: 15px; line-height: 1.8; color: #ffffff;">
                {html_prompt}
            </div>
-           <div style="margin-top: 40px; border-top: 1px dashed #daa520; padding-top: 20px;">
-               <p style="font-family: 'Cinzel Decorative', serif; color: #b8860b; font-size:18px;"><i class='fa-solid fa-certificate'></i> Authorized by PixieDuster</p>
+           
+           <div style="margin-top: 50px; text-align: center;">
+               <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, rgba(255,215,0,0.3), transparent); margin-bottom: 20px;">
+               <p style="font-family: 'Cinzel Decorative', cursive !important; color: #ffd700 !important; font-size: 18px; text-shadow: 0 0 8px rgba(255,215,0,0.4) !important; text-align: center !important;"><i class='fa-solid fa-certificate'></i> Authorized by PixieDuster</p>
            </div>
         </div>
-        """
+        '''
         st.markdown(certificate_html, unsafe_allow_html=True)
 
     st.write("---")
