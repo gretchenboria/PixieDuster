@@ -179,11 +179,21 @@ INPUTS = [
 ]
 
 CRITERIA = [
-    ("LIWC", "Pennebaker", "Function words, not topic words.\nPronoun orientation, certainty, tense.", ROSE, "b0"),
-    ("Big Five", "OCEAN", "Five-factor personality, read off\nlexical evidence.", BLUE, "b1"),
-    ("Cognitive style", "Epistemic stance", "Analytical or narrative. Evidence,\nanecdote, or conviction.", GREEN, "b2"),
-    ("Sociolinguistics", "The mechanics", "Register, jargon, rhythm,\npunctuation habits.", VIOLET, "b3"),
-    ("Benign Violation", "McGraw", "Funny = a violation that stays\nbenign. The humour slider.", GOLD, "b4"),
+    ("LIWC", "Linguistic Inquiry and Word Count  -  Pennebaker",
+     "Counts function words rather than topic words: who the\npronouns point at, certainty against hedging, past against now.",
+     ROSE, "b0"),
+    ("The Big Five", "Openness  -  Conscientiousness  -  Extraversion  -  Agreeableness  -  Neuroticism",
+     "The five-factor model, read off lexical evidence rather\nthan asked about in a questionnaire.",
+     BLUE, "b1"),
+    ("Cognitive style", "Epistemic stance  -  how the mind behind the words moves",
+     "Analytical or narrative? Reasoning from evidence, from\nanecdote, or from conviction? Dialectical or binary?",
+     GREEN, "b2"),
+    ("Sociolinguistics", "Register, rhythm, and the involuntary tells",
+     "Formal or colloquial, the jargon it reaches for, staccato\nor winding sentences, punctuation habits.",
+     VIOLET, "b3"),
+    ("Benign Violation", "Benign Violation Theory  -  McGraw",
+     "Funny is a violation that stays benign, and both at once.\nThat is exactly what the humour slider sets.",
+     GOLD, "b4"),
 ]
 
 
@@ -343,10 +353,10 @@ def flow() -> None:
 
         card(cx0, y, cw, ch, stroke=colour)
         add(f'<rect x="{cx0}" y="{y}" width="6" height="{ch}" rx="3" fill="{colour}"/>')
-        text(cx0 + 28, y + 42, name, size=23, fill=colour, weight="bold")
-        text(cx0 + 28, y + 66, who, size=13, fill=FAINT, spacing=1)
+        text(cx0 + 28, y + 40, name, size=22, fill=colour, weight="bold")
+        text(cx0 + 28, y + 66, who, size=11.5, fill=FAINT, spacing=0.6)
         for j, line in enumerate(body.split("\n")):
-            text(cx0 + 28, y + 96 + j * 21, line, size=14.5, fill=MAUVE)
+            text(cx0 + 28, y + 98 + j * 21, line, size=13.5, fill=MAUVE)
 
         gx = cx0 + cw - 132
         if i == 0:

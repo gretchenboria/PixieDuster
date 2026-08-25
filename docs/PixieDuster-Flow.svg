@@ -323,10 +323,10 @@
 <path d="M 680 790 C 820 790, 690 524.0, 834 524.0" fill="none" stroke="url(#b0)" stroke-width="7" opacity="0.9"/>
 <rect x="840" y="448" width="690" height="152" rx="18" fill="#1d1233" stroke="#ff9ecb" stroke-width="1.6" opacity="1.0"/>
 <rect x="840" y="448" width="6" height="152" rx="3" fill="#ff9ecb"/>
-<text x="868" y="490" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="23" fill="#ff9ecb" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >LIWC</text>
-<text x="868" y="514" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="1" opacity="1.0" >Pennebaker</text>
-<text x="868" y="544" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Function words, not topic words.</text>
-<text x="868" y="565" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Pronoun orientation, certainty, tense.</text>
+<text x="868" y="488" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#ff9ecb" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >LIWC</text>
+<text x="868" y="514" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0.6" opacity="1.0" >Linguistic Inquiry and Word Count  -  Pennebaker</text>
+<text x="868" y="546" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Counts function words rather than topic words: who the</text>
+<text x="868" y="567" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >pronouns point at, certainty against hedging, past against now.</text>
 <path d="M 1450.0 494.0 A 30 30 0 0 1 1450.0 554.0" fill="none" stroke="#ff9ecb" stroke-width="11" stroke-linecap="butt"/>
 <path d="M 1450.0 554.0 A 30 30 0 0 1 1421.5 514.7" fill="none" stroke="#ff7fb3" stroke-width="11" stroke-linecap="butt"/>
 <path d="M 1421.5 514.7 A 30 30 0 0 1 1450.0 494.0" fill="none" stroke="#b26b8f" stroke-width="11" stroke-linecap="butt"/>
@@ -334,10 +334,10 @@
 <path d="M 680 790 C 820 790, 690 698.0, 834 698.0" fill="none" stroke="url(#b1)" stroke-width="7" opacity="0.9"/>
 <rect x="840" y="622" width="690" height="152" rx="18" fill="#1d1233" stroke="#89b4fa" stroke-width="1.6" opacity="1.0"/>
 <rect x="840" y="622" width="6" height="152" rx="3" fill="#89b4fa"/>
-<text x="868" y="664" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="23" fill="#89b4fa" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Big Five</text>
-<text x="868" y="688" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="1" opacity="1.0" >OCEAN</text>
-<text x="868" y="718" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Five-factor personality, read off</text>
-<text x="868" y="739" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >lexical evidence.</text>
+<text x="868" y="662" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#89b4fa" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >The Big Five</text>
+<text x="868" y="688" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0.6" opacity="1.0" >Openness  -  Conscientiousness  -  Extraversion  -  Agreeableness  -  Neuroticism</text>
+<text x="868" y="720" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >The five-factor model, read off lexical evidence rather</text>
+<text x="868" y="741" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >than asked about in a questionnaire.</text>
 <rect x="1428" y="662.0" width="92" height="9" rx="4" fill="#ffffff" opacity="0.09"/>
 <rect x="1428" y="662.0" width="83" height="9" rx="4" fill="#89b4fa" opacity="0.95"/>
 <text x="1412" y="670.0" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="11" fill="#8a7da3" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >O</text>
@@ -356,10 +356,10 @@
 <path d="M 680 790 C 820 790, 690 872.0, 834 872.0" fill="none" stroke="url(#b2)" stroke-width="7" opacity="0.9"/>
 <rect x="840" y="796" width="690" height="152" rx="18" fill="#1d1233" stroke="#7ed9a0" stroke-width="1.6" opacity="1.0"/>
 <rect x="840" y="796" width="6" height="152" rx="3" fill="#7ed9a0"/>
-<text x="868" y="838" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="23" fill="#7ed9a0" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Cognitive style</text>
-<text x="868" y="862" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="1" opacity="1.0" >Epistemic stance</text>
-<text x="868" y="892" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Analytical or narrative. Evidence,</text>
-<text x="868" y="913" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >anecdote, or conviction.</text>
+<text x="868" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#7ed9a0" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Cognitive style</text>
+<text x="868" y="862" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0.6" opacity="1.0" >Epistemic stance  -  how the mind behind the words moves</text>
+<text x="868" y="894" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Analytical or narrative? Reasoning from evidence, from</text>
+<text x="868" y="915" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >anecdote, or from conviction? Dialectical or binary?</text>
 <path d="M 1416 886.0 A 34 34 0 0 1 1484 886.0" fill="none" stroke="#ffffff" stroke-opacity="0.13" stroke-width="9" stroke-linecap="round"/>
 <line x1="1450" y1="886.0" x2="1434.0" y2="856.0" stroke="#7ed9a0" stroke-width="4" stroke-linecap="round"/>
 <circle cx="1450" cy="886.0" r="4.5" fill="#7ed9a0"/>
@@ -368,10 +368,10 @@
 <path d="M 680 790 C 820 790, 690 1046.0, 834 1046.0" fill="none" stroke="url(#b3)" stroke-width="7" opacity="0.9"/>
 <rect x="840" y="970" width="690" height="152" rx="18" fill="#1d1233" stroke="#c9a0ff" stroke-width="1.6" opacity="1.0"/>
 <rect x="840" y="970" width="6" height="152" rx="3" fill="#c9a0ff"/>
-<text x="868" y="1012" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="23" fill="#c9a0ff" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Sociolinguistics</text>
-<text x="868" y="1036" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="1" opacity="1.0" >The mechanics</text>
-<text x="868" y="1066" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Register, jargon, rhythm,</text>
-<text x="868" y="1087" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >punctuation habits.</text>
+<text x="868" y="1010" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#c9a0ff" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Sociolinguistics</text>
+<text x="868" y="1036" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0.6" opacity="1.0" >Register, rhythm, and the involuntary tells</text>
+<text x="868" y="1068" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Formal or colloquial, the jargon it reaches for, staccato</text>
+<text x="868" y="1089" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >or winding sentences, punctuation habits.</text>
 <rect x="1402" y="1054.0" width="5" height="10" rx="2.5" fill="#c9a0ff" opacity="0.49"/>
 <rect x="1411" y="1038.0" width="5" height="26" rx="2.5" fill="#c9a0ff" opacity="0.57"/>
 <rect x="1420" y="1056.0" width="5" height="8" rx="2.5" fill="#c9a0ff" opacity="0.49"/>
@@ -387,10 +387,10 @@
 <path d="M 680 790 C 820 790, 690 1220.0, 834 1220.0" fill="none" stroke="url(#b4)" stroke-width="7" opacity="0.9"/>
 <rect x="840" y="1144" width="690" height="152" rx="18" fill="#1d1233" stroke="#ffd700" stroke-width="1.6" opacity="1.0"/>
 <rect x="840" y="1144" width="6" height="152" rx="3" fill="#ffd700"/>
-<text x="868" y="1186" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="23" fill="#ffd700" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Benign Violation</text>
-<text x="868" y="1210" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="1" opacity="1.0" >McGraw</text>
-<text x="868" y="1240" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Funny = a violation that stays</text>
-<text x="868" y="1261" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >benign. The humour slider.</text>
+<text x="868" y="1184" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#ffd700" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Benign Violation</text>
+<text x="868" y="1210" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0.6" opacity="1.0" >Benign Violation Theory  -  McGraw</text>
+<text x="868" y="1242" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >Funny is a violation that stays benign, and both at once.</text>
+<text x="868" y="1263" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#d1c4e9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >That is exactly what the humour slider sets.</text>
 <circle cx="1436" cy="1214.0" r="25" fill="#ff9ecb" fill-opacity="0.28" stroke="#ff9ecb" stroke-width="1.6"/>
 <circle cx="1464" cy="1214.0" r="25" fill="#7ed9a0" fill-opacity="0.28" stroke="#7ed9a0" stroke-width="1.6"/>
 <circle cx="1450" cy="1214.0" r="9" fill="#ffd700" opacity="0.92"/>
