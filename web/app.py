@@ -322,11 +322,11 @@ if st.session_state.step == 1:
         "one file you can paste into any AI.</p>",
         unsafe_allow_html=True,
     )
-    # Served by the Space alongside this file. An <img> avoids st.image's
-    # patchy SVG handling and stlite's file-mounting entirely.
+    # Deliberately a PNG, not the SVG. Zooming an SVG this dense makes the
+    # browser re-rasterise the whole thing on every step, which flashes.
     st.markdown(
         "<div style='margin:6px 0 4px;'>"
-        "<img src='./PixieDuster-Flow.svg' alt='How PixieDuster works' "
+        "<img src='./PixieDuster-Flow-web.png' alt='How PixieDuster works' "
         "style='width:100%; border-radius:14px; border:1px solid rgba(218,165,32,0.35);'>"
         "</div>",
         unsafe_allow_html=True,

@@ -496,7 +496,13 @@ def build_flow() -> tuple[Path, Path]:
     svg.write_text(body, encoding="utf-8")
     png = DOCS / "PixieDuster-Flow.png"
     subprocess.run(["rsvg-convert", "-w", str(W * 2), "-o", str(png), str(svg)], check=True)
-    return svg, png
+
+    # A web copy, deliberately raster. Served as SVG, the browser re-rasterises
+    # ~300 elements and a full-canvas gradient at every zoom step, which reads
+    # as the whole graphic flashing. A bitmap is simply interpolated instead.
+    web = DOCS / "PixieDuster-Flow-web.png"
+    subprocess.run(["rsvg-convert", "-w", "2000", "-o", str(web), str(svg)], check=True)
+    return svg, png, web
 
 
 def build() -> Path:
