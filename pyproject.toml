@@ -38,5 +38,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["pixieduster"]
 
+# The sdist otherwise sweeps in node_modules, the generated PDFs and the
+# browser app: 231 MB of things nobody installing the CLI has any use for.
+[tool.hatch.build.targets.sdist]
+only-include = ["pixieduster", "tests", "README-cli.md", "pyproject.toml", "LICENSE"]
+exclude = ["**/__pycache__", "**/*.pyc"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

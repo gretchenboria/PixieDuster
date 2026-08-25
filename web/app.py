@@ -138,15 +138,23 @@ h1, h2, h3 {
 }
 
 /* Animated Pixie Dust Falling Effect */
+/* Animate transform, never background-position.
+   background-position is a paint property: animating it re-rasterizes the
+   whole fixed, full-viewport gradient layer every single frame, forever.
+   Zooming changes the raster scale, so the browser re-rasterizes that layer
+   while it animates, and the whole page flashes. transform runs on the
+   compositor instead: the layer is painted once and only moved. */
 @keyframes dustFall {
-  from { background-position: 0px 0px; }
-  to { background-position: 0px 1000px; }
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, 350px, 0); }
 }
 
 .stApp::before {
     content: "";
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
+    /* One tile taller than the viewport, so translating by exactly one tile
+       height loops seamlessly without ever repainting. */
+    top: -350px; left: 0; width: 100%; height: calc(100% + 350px);
     background-image: 
         radial-gradient(2px 2px at 40px 60px, rgba(255,215,0,0.8), rgba(0,0,0,0)),
         radial-gradient(2px 2px at 150px 120px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
@@ -156,8 +164,14 @@ h1, h2, h3 {
     background-repeat: repeat;
     background-size: 350px 350px;
     animation: dustFall 25s linear infinite;
+    will-change: transform;
     pointer-events: none;
     z-index: 0;
+}
+
+/* Some people get motion sick, and some machines cannot afford the layer. */
+@media (prefers-reduced-motion: reduce) {
+    .stApp::before { animation: none; }
 }
 
 /* Primary buttons */
