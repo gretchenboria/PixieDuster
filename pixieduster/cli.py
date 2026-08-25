@@ -242,11 +242,20 @@ def _do_login(token: str | None) -> str:
     return token
 
 
+#: Filenames that a coding agent reads automatically.
+#:   AGENTS.md   the cross-tool convention (Claude Code, Cursor, and others)
+#:   CLAUDE.md   Claude Code specifically
+#:   GEMINI.md   the Gemini CLI
+#: Any other name is just a file you paste in yourself.
+AGENT_FILENAMES = {"agents.md", "claude.md", "gemini.md"}
+
+
 def _default_persona(explicit):
     """persona.md, AGENTS.md, or CLAUDE.md - whichever exists."""
     if explicit is not None:
         return explicit
-    for candidate in (Path("persona.md"), Path("AGENTS.md"), Path("CLAUDE.md")):
+    for candidate in (Path("persona.md"), Path("AGENTS.md"),
+                      Path("CLAUDE.md"), Path("GEMINI.md")):
         if candidate.exists():
             return candidate
     return Path("persona.md")
@@ -262,7 +271,7 @@ def clone(
     from_: list[Path] = typer.Option(None, "--from", "-f", help="A folder of your writing: notes, screenshots, photos of handwriting, emails, essays. Repeatable."),
     repo: Path = typer.Option(None, "--repo", "-r", help="Advanced: read writing out of a git repo instead (commits, README, docstrings)."),
     author: str = typer.Option(None, "--author", "-a", help="With --repo: email to clone. Omit for the collective voice."),
-    output: Path = typer.Option(None, "--output", "-o", help="Where to write it (default: persona.md, or AGENTS.md for --repo)."),
+    output: Path = typer.Option(None, "--output", "-o", help="Where to write it. Name it AGENTS.md, CLAUDE.md or GEMINI.md and that tool picks it up automatically. Default: persona.md (AGENTS.md for --repo)."),
     name: str = typer.Option(None, "--name", "-n", help="Name for the persona."),
     model: str = typer.Option(None, "--model", help=f"Gemini model (default: {core.DEFAULT_MODEL})."),
     api_key: str = typer.Option(None, "--api-key", help="Use this Gemini key instead of the free hosted service.", show_default=False),
@@ -462,8 +471,10 @@ def clone(
     if output is None:
         output = Path("AGENTS.md") if (use_repo and not describe) else Path("persona.md")
 
+    # Filenames a coding agent picks up on its own. Same persona either way --
+    # these just get a preamble telling the agent it governs prose, not code.
     body = persona
-    if output.name.lower() in {"agents.md", "claude.md"}:
+    if output.name.lower() in AGENT_FILENAMES:
         body = prompts.AGENTS_MD_HEADER + "\n\n" + persona
 
     if output.exists() and not assume_yes:
@@ -475,6 +486,13 @@ def clone(
 
     ui.certificate(persona, target_name)
     ui.success(f"Persona written to {output}")
+    if output.name.lower() in AGENT_FILENAMES:
+        ui.hint(f"{output.name} is read automatically by that tool. Nothing else to do.")
+    else:
+        ui.hint(
+            f"Paste {output.name} into any AI as its system prompt.\n"
+            "Or name it AGENTS.md / CLAUDE.md / GEMINI.md and the tool loads it itself."
+        )
     ui.hint(f"Try it:  pixieduster chat --persona {output}")
 
 

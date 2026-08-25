@@ -288,31 +288,72 @@ if st.session_state.step == 1:
 
     st.write("---")
 
-    # ---- Get the CLI ---------------------------------------------------
-    with st.expander("Prefer the terminal? Get the CLI", expanded=False):
+    # ---- Two ways to use it --------------------------------------------
+    st.markdown("<h3 style='text-align:center;'>Two ways to use it</h3>",
+                unsafe_allow_html=True)
+
+    col_web, col_cli = st.columns([1, 1.15])
+
+    with col_web:
         st.markdown(
-            "The command line version does everything this page does, plus it can read "
-            "writing straight out of a git repo &mdash; commit messages, README, docstrings."
-        )
-        st.code(
-            "pip install https://gretchenboria-pixieduster.static.hf.space/pixieduster-0.1.0-py3-none-any.whl\n"
-            "\n"
-            "pixieduster clone -d \"a friendly desktop robot with great humor\"\n"
-            "pixieduster clone --from ./my-essays\n"
-            "pixieduster clone --repo .",
-            language="bash",
-        )
-        st.markdown(
-            "<a href='pixieduster-0.1.0-py3-none-any.whl' download "
-            "style='color:#ffd700; font-weight:600;'>"
-            "<i class='fa-solid fa-download'></i> Download the wheel directly</a>"
-            " &nbsp;&middot;&nbsp; "
-            "<a href='https://github.com/gretchenboria/PixieDuster' "
-            "style='color:#ffd700; font-weight:600;'>"
-            "<i class='fa-brands fa-github'></i> Source on GitHub</a>",
+            "<div style='background:rgba(255,255,255,0.04); border:1px solid rgba(218,165,32,0.3);"
+            " border-radius:14px; padding:20px 22px; height:100%;'>"
+            "<div style='color:#e2d1f9; font-weight:700; font-size:1.05rem;'>"
+            "<i class='fa-solid fa-window-maximize' style='color:#daa520;'></i>&nbsp; "
+            "Right here, in the browser</div>"
+            "<p style='color:#d1c4e9; font-size:0.92rem; margin:10px 0 0; line-height:1.55;'>"
+            "Upload a handful of files and go. Nothing to install, nothing to sign up for."
+            "</p>"
+            "<p style='color:#8a7da3; font-size:0.85rem; margin:10px 0 0;'>"
+            "Best for trying it, or for one quick persona.</p>"
+            "</div>",
             unsafe_allow_html=True,
         )
 
+    with col_cli:
+        st.markdown(
+            "<div style='background:linear-gradient(135deg, rgba(255,215,0,0.10), rgba(255,215,0,0.03));"
+            " border:1.5px solid #ffd700; border-radius:14px; padding:20px 22px; height:100%;'>"
+            "<div style='color:#ffd700; font-weight:700; font-size:1.05rem;'>"
+            "<i class='fa-solid fa-terminal'></i>&nbsp; In your terminal &mdash; point it at everything</div>"
+            "<p style='color:#d1c4e9; font-size:0.92rem; margin:10px 0 0; line-height:1.55;'>"
+            "Give it a <b style='color:#ffd700;'>whole folder</b> and it reads every file inside: "
+            "years of notes, screenshots of texts, photos of handwriting, saved emails, PDFs. "
+            "No uploading, one file at a time, ever."
+            "</p>"
+            "<p style='color:#d1c4e9; font-size:0.92rem; margin:10px 0 0; line-height:1.55;'>"
+            "Or give it a <b style='color:#ffd700;'>git repository</b> and it mines your commit "
+            "messages, README and docstrings &mdash; writing you never thought of as writing.</p>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.write("")
+    st.markdown(
+        "<p style='color:#8a7da3; font-size:0.85rem; margin-bottom:4px;'>"
+        "Install it once, then point it wherever your writing lives:</p>",
+        unsafe_allow_html=True,
+    )
+    st.code(
+        "pip install https://gretchenboria-pixieduster.static.hf.space/pixieduster-0.1.0-py3-none-any.whl\n"
+        "\n"
+        "pixieduster clone --from ~/Documents/my-writing    # the entire folder\n"
+        "pixieduster clone --repo .                         # a whole git repo\n"
+        "pixieduster clone -d \"a friendly desktop robot with great humor\"",
+        language="bash",
+    )
+    st.markdown(
+        "<a href='pixieduster-0.1.0-py3-none-any.whl' download "
+        "style='color:#ffd700; font-weight:600;'>"
+        "<i class='fa-solid fa-download'></i> Download it directly</a>"
+        " &nbsp;&middot;&nbsp; "
+        "<a href='https://github.com/gretchenboria/PixieDuster' "
+        "style='color:#ffd700; font-weight:600;'>"
+        "<i class='fa-brands fa-github'></i> Source on GitHub</a>",
+        unsafe_allow_html=True,
+    )
+
+    st.write("---")
 
     # ---- How it works -------------------------------------------------
     st.markdown("<h3 style='text-align:center;'>How it works</h3>", unsafe_allow_html=True)
@@ -322,12 +363,21 @@ if st.session_state.step == 1:
         "one file you can paste into any AI.</p>",
         unsafe_allow_html=True,
     )
-    # Deliberately a PNG, not the SVG. Zooming an SVG this dense makes the
-    # browser re-rasterise the whole thing on every step, which flashes.
+    # A bitmap, with its intrinsic size declared.
+    #
+    # width:100% and no dimensions is a reflow loop inside Hugging Face's
+    # auto-resizing iframe: the image sizes off the container, that changes the
+    # page height, the iframe resizes, a scrollbar appears or vanishes, the
+    # container width changes, and round it goes. Zooming perturbs it into
+    # oscillating and the whole app repaints. Declaring width/height gives the
+    # browser the aspect ratio up front, so the height never depends on a
+    # measurement that the height itself can change.
     st.markdown(
         "<div style='margin:6px 0 4px;'>"
         "<img src='./PixieDuster-Flow-web.png' alt='How PixieDuster works' "
-        "style='width:100%; border-radius:14px; border:1px solid rgba(218,165,32,0.35);'>"
+        "width='2000' height='1320' decoding='async' "
+        "style='display:block; max-width:100%; height:auto; aspect-ratio:2000/1320; "
+        "border-radius:14px; border:1px solid rgba(218,165,32,0.35);'>"
         "</div>",
         unsafe_allow_html=True,
     )
