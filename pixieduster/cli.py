@@ -124,7 +124,7 @@ def _safety_gate(
         high = [f for f in findings if f.severity == "high"]
         ui.error(
             f"{len(findings)} possible secret(s) found in the text that would be sent"
-            + (f" — {len(high)} high severity." if high else ".")
+            + (f" - {len(high)} high severity." if high else ".")
         )
         ui.findings_table(findings)
 
@@ -276,14 +276,13 @@ def clone(
     model: str = typer.Option(None, "--model", help=f"Gemini model (default: {core.DEFAULT_MODEL})."),
     api_key: str = typer.Option(None, "--api-key", help="Use this Gemini key instead of the free hosted service.", show_default=False),
     byok: bool = typer.Option(False, "--byok", help="Use your own stored Gemini key rather than the hosted service."),
-    humor: int = typer.Option(None, "--humor", min=0, max=10, help="Humor level 0-10; skips the prompt."),
     questions: int = typer.Option(3, "--questions", "-q", min=0, max=8, help="Profiling questions to ask."),
     max_chars: int = typer.Option(180_000, "--max-chars", help="Cap on mined characters."),
     no_pr: bool = typer.Option(False, "--no-pr", help="Skip GitHub PR mining."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print what would be sent, then exit."),
     scrub: bool = typer.Option(False, "--scrub", help="Redact detected secrets instead of asking."),
     assume_yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts."),
-    plain: bool = typer.Option(False, "--plain", help="No colour or animation."),
+    plain: bool = typer.Option(False, "--plain", help="No color or animation."),
 ) -> None:
     """Build a persona prompt: from a description, from writing samples, or from a repo."""
     _apply_plain(plain)
@@ -442,16 +441,6 @@ def clone(
                 chosen = ui.ask_choice(q.question, q.options, i, len(qs))
                 answers.append((q.question, chosen))
 
-    if humor is None:
-        humor = (
-            ui.ask_slider(
-                "Humor Level (Benign Violation Theory)", 0, 10, 5,
-                "How often the persona attempts humor by violating a norm while staying benign.",
-            )
-            if sys.stdin.isatty() and not ui.is_plain()
-            else 5
-        )
-
     # --- generate ----------------------------------------------------------
     try:
         with ui.stages("Distilling the persona") as stage:
@@ -460,7 +449,7 @@ def clone(
             stage("Assessing cognitive style", icon="puzzle")
             stage("Mapping sociolinguistics", icon="comments")
             persona = core.generate_persona(
-                key, model, target_name, samples, answers, humor,
+                key, model, target_name, samples, answers,
                 description=describe, files=files or None, base_url=base_url,
             )
     except core.GeminiError as exc:

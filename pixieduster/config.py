@@ -234,7 +234,7 @@ def save_api_key(key: str) -> Path:
     """Persist ``key`` to ``CONFIG_PATH`` under ``[auth]``.
 
     The directory is created 0700 and the file written 0600. Any other keys
-    already in the file — known or not — are preserved. Returns the path.
+    already in the file - known or not - are preserved. Returns the path.
     """
     if not key or not key.strip():
         raise ValueError("Refusing to save an empty API key.")

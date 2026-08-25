@@ -1,5 +1,5 @@
 /**
- * PixieDuster hosted API — a metered proxy in front of Gemini.
+ * PixieDuster hosted API - a metered proxy in front of Gemini.
  *
  * The Gemini key is a Worker secret and never reaches a client. Callers
  * authenticate with their own Hugging Face token, which we verify against the

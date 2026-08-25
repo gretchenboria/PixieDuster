@@ -46,7 +46,7 @@ BUILD_DATE = "24 August 2026"
 # Core fonts are cp1252. Everything that leaves this module goes through here,
 # which also enforces the no-emoji rule the hard way.
 _SUBS = {
-    "—": " - ", "–": "-", "‘": "'", "’": "'",
+    "-": " - ", "-": "-", "‘": "'", "’": "'",
     "“": '"', "”": '"', "…": "...", "→": "->",
     "←": "<-", "•": "-", "✓": "v", " ": " ",
     "─": "-", "●": "o", "×": "x",
@@ -122,20 +122,20 @@ def need(d: Doc, mm: float) -> None:
 def para(d: Doc, *segments, size: float = 9.4, lh: float = 5.1, gap: float = 3.4) -> None:
     """Flow a paragraph of mixed styles.
 
-    Each segment is a str (body colour, regular) or ``(text, style, colour)``.
+    Each segment is a str (body color, regular) or ``(text, style, color)``.
     """
     need(d, lh * 2)
     d.set_x(MARGIN)
     for seg in segments:
         if isinstance(seg, str):
-            text, style, colour = seg, "", MAUVE
+            text, style, color = seg, "", MAUVE
         else:
             text = seg[0]
             style = seg[1] if len(seg) > 1 else ""
-            colour = seg[2] if len(seg) > 2 else MAUVE
+            color = seg[2] if len(seg) > 2 else MAUVE
         font = "Courier" if "C" in style else "Helvetica"
         d.set_font(font, style.replace("C", ""), size if font == "Helvetica" else size - 0.7)
-        d.set_text_color(*colour)
+        d.set_text_color(*color)
         d.write(lh, T(text))
     d.ln(lh)
     d.ln(gap)
@@ -154,14 +154,14 @@ def bullets(d: Doc, items, size: float = 9.4, lh: float = 5.0, gap: float = 2.4)
         d.set_xy(MARGIN + 7.0, y0)
         for seg in segs:
             if isinstance(seg, str):
-                text, style, colour = seg, "", MAUVE
+                text, style, color = seg, "", MAUVE
             else:
                 text = seg[0]
                 style = seg[1] if len(seg) > 1 else ""
-                colour = seg[2] if len(seg) > 2 else MAUVE
+                color = seg[2] if len(seg) > 2 else MAUVE
             font = "Courier" if "C" in style else "Helvetica"
             d.set_font(font, style.replace("C", ""), size if font == "Helvetica" else size - 0.7)
-            d.set_text_color(*colour)
+            d.set_text_color(*color)
             d.write(lh, T(text))
         d.ln(lh)
         d.set_left_margin(MARGIN)
@@ -226,8 +226,8 @@ def code(d: Doc, lines, *, caption: str | None = None, size: float = 8.0) -> Non
         y += 4.6
     d.set_font("Courier", "", size)
     for line in lines:
-        colour = FAINT if line.strip().startswith("#") else LILAC
-        d.set_text_color(*colour)
+        color = FAINT if line.strip().startswith("#") else LILAC
+        d.set_text_color(*color)
         d.set_xy(MARGIN + 5, y)
         d.cell(CW - 8, lh, T(line))
         y += lh
@@ -235,7 +235,7 @@ def code(d: Doc, lines, *, caption: str | None = None, size: float = 8.0) -> Non
 
 
 def callout(d: Doc, title: str, *segments, tint=GOLD) -> None:
-    """A boxed aside in the accent colour."""
+    """A boxed aside in the accent color."""
     d.ln(2.6)
     need(d, 30)
     y0 = d.get_y()
@@ -244,14 +244,14 @@ def callout(d: Doc, title: str, *segments, tint=GOLD) -> None:
     d.set_right_margin(MARGIN + 6)
     for seg in segments:
         if isinstance(seg, str):
-            text, style, colour = seg, "", MAUVE
+            text, style, color = seg, "", MAUVE
         else:
             text = seg[0]
             style = seg[1] if len(seg) > 1 else ""
-            colour = seg[2] if len(seg) > 2 else MAUVE
+            color = seg[2] if len(seg) > 2 else MAUVE
         font = "Courier" if "C" in style else "Helvetica"
         d.set_font(font, style.replace("C", ""), 8.9 if font == "Helvetica" else 8.2)
-        d.set_text_color(*colour)
+        d.set_text_color(*color)
         d.write(4.8, T(text))
     d.ln(4.8)
     y1 = d.get_y()
@@ -349,8 +349,8 @@ def box(d: Doc, x, y, w, h, label, *, sub=None, edge=DIM_GOLD, fill=PURPLE,
         d.multi_cell(w, 3.1, T(sub), align="C")
 
 
-def arrow(d: Doc, x1, y1, x2, y2, *, colour=GOLD, head=1.7, width=0.35, dashed=False) -> None:
-    d.set_draw_color(*colour)
+def arrow(d: Doc, x1, y1, x2, y2, *, color=GOLD, head=1.7, width=0.35, dashed=False) -> None:
+    d.set_draw_color(*color)
     d.set_line_width(width)
     if dashed:
         d.set_dash_pattern(dash=1.2, gap=1.2)
@@ -361,13 +361,13 @@ def arrow(d: Doc, x1, y1, x2, y2, *, colour=GOLD, head=1.7, width=0.35, dashed=F
     import math
 
     ang = math.atan2(y2 - y1, x2 - x1)
-    d.set_fill_color(*colour)
+    d.set_fill_color(*color)
     p1 = (x2, y2)
     p2 = (x2 - head * math.cos(ang - 0.42), y2 - head * math.sin(ang - 0.42))
     p3 = (x2 - head * math.cos(ang + 0.42), y2 - head * math.sin(ang + 0.42))
     with d.new_path(p1[0], p1[1]) as path:
-        path.style.fill_color = "#%02x%02x%02x" % colour
-        path.style.stroke_color = "#%02x%02x%02x" % colour
+        path.style.fill_color = "#%02x%02x%02x" % color
+        path.style.stroke_color = "#%02x%02x%02x" % color
         path.line_to(p2[0], p2[1])
         path.line_to(p3[0], p3[1])
         path.close()
@@ -394,8 +394,8 @@ def sparkles(d: Doc, seed: int, count: int, x0, y0, w, h, *, big=False) -> None:
         x = x0 + fx * w
         y = y0 + fy * h
         r = (0.35 if pick < 55 else 0.7) * (1.5 if big else 1.0)
-        colour = GOLD if pick % 3 == 0 else (DIM_GOLD if pick % 3 == 1 else (110, 88, 150))
-        d.set_fill_color(*colour)
+        color = GOLD if pick % 3 == 0 else (DIM_GOLD if pick % 3 == 1 else (110, 88, 150))
+        d.set_fill_color(*color)
         d.ellipse(x - r / 2, y - r / 2, r, r, style="F")
 
 
@@ -600,7 +600,7 @@ def start_here(d: Doc) -> None:
 
     h2(d, "The one thing to be careful about")
     para(d,
-         ("Your writing gets sent to Google to be analysed. That is how it works, and there "
+         ("Your writing gets sent to Google to be analyzed. That is how it works, and there "
           "is no way around it. So before it sends anything, you can look at exactly what "
           "would go:", "", MAUVE))
     code(d, ["pixieduster clone --dry-run"])
@@ -712,7 +712,7 @@ def section_1(d: Doc) -> None:
          ("app.py", "C", LILAC),
          (" was rewired to import from ", "", MAUVE), ("pixieduster.core", "C", LILAC),
          (" and ", "", MAUVE), ("pixieduster.prompts", "C", LILAC),
-         (", so the rubric, the anti-AI template, the Benign Violation humour block and the "
+         (", so the rubric, the anti-AI template, the Benign Violation humor block and the "
           "Gemini call itself exist in exactly one place. A fix to the persona rubric lands "
           "in both products at once.", "", MAUVE))
 
@@ -810,7 +810,7 @@ def section_2(d: Doc) -> None:
     # dry-run exit
     d.set_draw_color(*ROSE)
     arrow(d, x_gate - bw / 2 - 1.0, y_r1 + bh - 3.5, x_gate - bw / 2 - 12.0, y_r1 + bh + 4.0,
-          colour=ROSE, dashed=True)
+          color=ROSE, dashed=True)
     d.set_font("Helvetica", "B", 6.2)
     d.set_text_color(*ROSE)
     d.set_xy(x_gate - bw / 2 - 54.0, y_r1 + bh + 3.0)
@@ -865,7 +865,7 @@ def section_3(d: Doc) -> None:
         ["Module", "Lines", "Job"],
         [
             ["`types.py`", "53", "Three dataclasses: Sample, Question, Finding. Imports nothing, so everyone can import it."],
-            ["`prompts.py`", "139", "The rubric, the anti-AI template, the humour block, the question schema, the AGENTS.md header, the diff instruction. Text only."],
+            ["`prompts.py`", "139", "The rubric, the anti-AI template, the humor block, the question schema, the AGENTS.md header, the diff instruction. Text only."],
             ["`config.py`", "280", "Key resolution and the TOML config file. Hand-rolled TOML writing, because tomllib is read-only."],
             ["`core.py`", "462", "Everything that speaks to Gemini: call, chat, list models, generate questions, generate persona."],
             ["`cli.py`", "467", "Typer commands, the flow control, and the only writes to your repo."],
@@ -900,7 +900,7 @@ def section_3(d: Doc) -> None:
     for i, (label, sub) in enumerate(mids):
         x = MARGIN + 8 + i * step + (step - bw) / 2
         box(d, x, mid_y, bw, bh, label, sub=sub)
-        arrow(d, cx, y0 + 7 + bh, x + bw / 2, mid_y - 0.8, colour=DIM_GOLD, width=0.3)
+        arrow(d, cx, y0 + 7 + bh, x + bw / 2, mid_y - 0.8, color=DIM_GOLD, width=0.3)
 
     low_y = y0 + 70
     lows = [("config.py", "key + settings"), ("prompts.py", "the text"), ("types.py", "the shapes")]
@@ -914,11 +914,11 @@ def section_3(d: Doc) -> None:
 
     # core -> prompts, everyone -> types, cli -> config
     core_x = MARGIN + 8 + 2 * step + step / 2
-    arrow(d, core_x, mid_y + bh, positions["prompts.py"], low_y - 0.8, colour=(150, 122, 190), width=0.28)
+    arrow(d, core_x, mid_y + bh, positions["prompts.py"], low_y - 0.8, color=(150, 122, 190), width=0.28)
     mining_x = MARGIN + 8 + 0 * step + step / 2
     safety_x = MARGIN + 8 + 1 * step + step / 2
     for sx in (mining_x, safety_x, core_x):
-        arrow(d, sx, mid_y + bh, positions["types.py"], low_y - 0.8, colour=(150, 122, 190), width=0.28)
+        arrow(d, sx, mid_y + bh, positions["types.py"], low_y - 0.8, color=(150, 122, 190), width=0.28)
     gutter = MARGIN + 7.0
     d.set_draw_color(150, 122, 190)
     d.set_line_width(0.28)
@@ -927,7 +927,7 @@ def section_3(d: Doc) -> None:
     d.line(gutter, y0 + 7 + bh / 2, gutter, low_y + bh / 2)
     d.set_dash_pattern()
     arrow(d, gutter, low_y + bh / 2, positions["config.py"] - bw / 2 - 0.8, low_y + bh / 2,
-          colour=(150, 122, 190), width=0.28, dashed=True)
+          color=(150, 122, 190), width=0.28, dashed=True)
 
     d.set_y(y0 + 96)
     caption(d, "Dependencies point downward only. Nothing in the middle row imports anything else in it.")
@@ -1263,7 +1263,7 @@ def section_6(d: Doc) -> None:
          " rather than ", ("load_dotenv", "C", LILAC),
          ". load_dotenv would push the key into the process environment, where any subprocess "
          "inherits it and any crash dump captures it. Because the real environment is checked "
-         "first anyway, this is behaviourally identical to load_dotenv(override=False) and "
+         "first anyway, this is behaviorally identical to load_dotenv(override=False) and "
          "strictly safer."],
         [("Errors are safe to paste. ", "B", LILAC),
          ("GeminiError", "C", LILAC), " passes every message through a sanitizer that strips ",
@@ -1309,7 +1309,7 @@ def section_7(d: Doc) -> None:
          "checkmark as the next one starts."],
         [("Arrow-key select and a gold slider. ", "B", LILAC),
          "Single-select for the interview questions, and a ", ("---o---", "C", LILAC),
-         " bar for the humour level, both driven by raw key reads."],
+         " bar for the humor level, both driven by raw key reads."],
         [("The certificate. ", "B", LILAC),
          "A double-bordered panel: CERTIFICATE OF PERSONA in letter-spaced gold, 'Officially "
          "cloned for: NAME', the rendered markdown body between gold rules, and 'Authorized by "
@@ -1355,7 +1355,7 @@ def section_7(d: Doc) -> None:
          (" is in the environment, or stdout is not a TTY. The third is what makes CI and "
           "piping work without anyone remembering a flag: piping the output produces zero "
           "ANSI bytes, the stage list becomes one plain line per step, arrow-key select "
-          "becomes numbered input, and the certificate becomes a rule-and-centre-text block.",
+          "becomes numbered input, and the certificate becomes a rule-and-center-text block.",
           "", MAUVE))
 
 
@@ -1415,7 +1415,7 @@ def section_9(d: Doc) -> None:
     para(d,
          "Five agents worked in parallel against a single file, ", ("CONTRACT.md", "C", LILAC),
          (", written before any implementation started. The contract pre-declared every module "
-          "signature - argument names, return types, and the exact behaviour of the tricky "
+          "signature - argument names, return types, and the exact behavior of the tricky "
           "cases - and assigned disjoint file ownership, so no two agents could write to the "
           "same file. ", "", MAUVE), ("types.py", "C", LILAC),
          (" was written first and alone, because everything else imports it.", "", MAUVE))
@@ -1516,7 +1516,7 @@ def section_10(d: Doc) -> None:
 
     h2(d, "4. Secret detection is best-effort")
     para(d,
-         "It is pattern matching. It will not catch a credential with no recognisable shape, "
+         "It is pattern matching. It will not catch a credential with no recognizable shape, "
          "a secret split across lines, or something encoded before it was committed. The "
          "benchmarks in section 5 measure precision on real code, not recall against a "
          "determined leak. Review the ", ("--dry-run", "C", LILAC),

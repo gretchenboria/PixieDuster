@@ -1,4 +1,4 @@
-"""Build the PixieDuster poster as SVG, then rasterise it to PNG.
+"""Build the PixieDuster poster as SVG, then rasterize it to PNG.
 
     .venv-cli/bin/python scripts/make_poster.py
 
@@ -92,12 +92,12 @@ def defs() -> None:
         '<stop offset="100%" stop-color="#ffffff" stop-opacity="0.85"/></linearGradient>'
     )
     # one gradient per outgoing beam
-    for name, colour in (("b0", ROSE), ("b1", BLUE), ("b2", GREEN),
+    for name, color in (("b0", ROSE), ("b1", BLUE), ("b2", GREEN),
                          ("b3", VIOLET), ("b4", GOLD)):
         add(
             f'<linearGradient id="{name}" x1="0" y1="0" x2="1" y2="0">'
-            f'<stop offset="0%" stop-color="{colour}" stop-opacity="0.95"/>'
-            f'<stop offset="100%" stop-color="{colour}" stop-opacity="0.18"/></linearGradient>'
+            f'<stop offset="0%" stop-color="{color}" stop-opacity="0.95"/>'
+            f'<stop offset="100%" stop-color="{color}" stop-opacity="0.18"/></linearGradient>'
         )
     add(
         '<linearGradient id="prism" x1="0" y1="0" x2="1" y2="1">'
@@ -168,7 +168,7 @@ def section_label(y, n, title) -> None:
 # the prism
 # ---------------------------------------------------------------------------
 
-# (title, what you do in the browser, the equivalent CLI flag, colour, examples)
+# (title, what you do in the browser, the equivalent CLI flag, color, examples)
 INPUTS = [
     ("Invent a character", "type a description", "--describe", ROSE,
      "a friendly desktop robot"),
@@ -192,7 +192,7 @@ CRITERIA = [
      "Formal or colloquial, the jargon it reaches for, staccato\nor winding sentences, punctuation habits.",
      VIOLET, "b3"),
     ("Benign Violation", "Benign Violation Theory  -  McGraw",
-     "Funny is a violation that stays benign, and both at once.\nThat is exactly what the humour slider sets.",
+     "Funny is a violation that stays benign, and both at once.\nRead off the evidence, like everything else here.",
      GOLD, "b4"),
 ]
 
@@ -201,7 +201,7 @@ def liwc_chart(cx, cy) -> None:
     """Donut of Bolt's real pronoun split: 50 / 30 / 20."""
     r, ring = 30, 11
     start = -90.0
-    for frac, colour in ((0.50, ROSE), (0.30, "#ff7fb3"), (0.20, "#b26b8f")):
+    for frac, color in ((0.50, ROSE), (0.30, "#ff7fb3"), (0.20, "#b26b8f")):
         end = start + frac * 360
         a0, a1 = math.radians(start), math.radians(end)
         x0, y0 = cx + r * math.cos(a0), cy + r * math.sin(a0)
@@ -209,7 +209,7 @@ def liwc_chart(cx, cy) -> None:
         large = 1 if frac > 0.5 else 0
         add(
             f'<path d="M {x0:.1f} {y0:.1f} A {r} {r} 0 {large} 1 {x1:.1f} {y1:.1f}" '
-            f'fill="none" stroke="{colour}" stroke-width="{ring}" stroke-linecap="butt"/>'
+            f'fill="none" stroke="{color}" stroke-width="{ring}" stroke-linecap="butt"/>'
         )
         start = end
     text(cx, cy + 5, "you", size=13, fill=LILAC, anchor="middle", weight="bold")
@@ -304,15 +304,15 @@ def flow_output(y: float) -> None:
 def flow() -> None:
     section_label(430, "01", "How it works")
 
-    px, py = 640, 790            # prism centre
+    px, py = 640, 790            # prism center
     ph = 132                     # prism half-height
 
     # --- input cards ---------------------------------------------------
-    for i, (label, web, flag, colour, detail) in enumerate(INPUTS):
+    for i, (label, web, flag, color, detail) in enumerate(INPUTS):
         y = 500 + i * 178
-        card(80, y, 300, 146, stroke=colour)
-        add(f'<rect x="80" y="{y}" width="6" height="146" rx="3" fill="{colour}"/>')
-        text(108, y + 38, label, size=20, fill=colour, weight="bold")
+        card(80, y, 300, 146, stroke=color)
+        add(f'<rect x="80" y="{y}" width="6" height="146" rx="3" fill="{color}"/>')
+        text(108, y + 38, label, size=20, fill=color, weight="bold")
         text(108, y + 64, f"in the app:  {web}", size=12.5, fill=LILAC)
         text(108, y + 88, "in the CLI:", size=12.5, fill=LILAC)
         text(180, y + 88, flag, size=13.5, fill=GOLD, family=MONO)
@@ -322,7 +322,7 @@ def flow() -> None:
         sy = y + 73
         add(
             f'<path d="M 384 {sy} C 480 {sy}, 500 {py}, {px-96} {py}" fill="none" '
-            f'stroke="{colour}" stroke-width="2.6" opacity="0.55"/>'
+            f'stroke="{color}" stroke-width="2.6" opacity="0.55"/>'
         )
 
     # --- the white beam entering ----------------------------------------
@@ -337,12 +337,12 @@ def flow() -> None:
     text(px, py + 66, "GEMINI", size=15, fill=GOLD, weight="bold", anchor="middle",
          family=MONO, spacing=2)
     text(px, py + 92, "four rubrics", size=12.5, fill=LILAC, anchor="middle")
-    text(px, py + 110, "+ a humour model", size=12.5, fill=LILAC, anchor="middle")
+    text(px, py + 110, "humor included", size=12.5, fill=LILAC, anchor="middle")
 
     # --- the fan of criteria ---------------------------------------------
     cx0, cw, ch, gap = 840, 690, 152, 22
     top = 448
-    for i, (name, who, body, colour, grad) in enumerate(CRITERIA):
+    for i, (name, who, body, color, grad) in enumerate(CRITERIA):
         y = top + i * (ch + gap)
         mid = y + ch / 2
 
@@ -351,9 +351,9 @@ def flow() -> None:
             f'fill="none" stroke="url(#{grad})" stroke-width="7" opacity="0.9"/>'
         )
 
-        card(cx0, y, cw, ch, stroke=colour)
-        add(f'<rect x="{cx0}" y="{y}" width="6" height="{ch}" rx="3" fill="{colour}"/>')
-        text(cx0 + 28, y + 40, name, size=22, fill=colour, weight="bold")
+        card(cx0, y, cw, ch, stroke=color)
+        add(f'<rect x="{cx0}" y="{y}" width="6" height="{ch}" rx="3" fill="{color}"/>')
+        text(cx0 + 28, y + 40, name, size=22, fill=color, weight="bold")
         text(cx0 + 28, y + 66, who, size=11.5, fill=FAINT, spacing=0.6)
         for j, line in enumerate(body.split("\n")):
             text(cx0 + 28, y + 98 + j * 21, line, size=13.5, fill=MAUVE)
@@ -410,7 +410,7 @@ def output() -> None:
          fill=GOLD, family=MONO)
     text(652, dy + 172, ' Let\'s fix it before your sanity hits 1%."', size=16.5,
          fill=GOLD, family=MONO)
-    text(1470, dy + 172, "humour 8/10", size=12.5, fill=FAINT, anchor="end")
+    text(1470, dy + 172, "humor 8/10", size=12.5, fill=FAINT, anchor="end")
 
 
 # ---------------------------------------------------------------------------
@@ -436,16 +436,16 @@ def stack() -> None:
          "The only third party involved. Nothing else is contacted, ever."),
     ]
 
-    for title, colour, by, bh, chips, note in bands:
-        card(80, by, 1440, bh, stroke=colour, fill="#180f2c")
-        add(f'<rect x="80" y="{by}" width="1440" height="4" rx="2" fill="{colour}" opacity="0.9"/>')
-        text(112, by + 44, title, size=17, fill=colour, weight="bold", spacing=3)
+    for title, color, by, bh, chips, note in bands:
+        card(80, by, 1440, bh, stroke=color, fill="#180f2c")
+        add(f'<rect x="80" y="{by}" width="1440" height="4" rx="2" fill="{color}" opacity="0.9"/>')
+        text(112, by + 44, title, size=17, fill=color, weight="bold", spacing=3)
         text(1488, by + 44, note, size=13, fill=FAINT, anchor="end")
 
         x = 112
         for name, what in chips:
             w = max(190, 22 + len(name) * 11)
-            add(f'<rect x="{x}" y="{by+66}" width="{w}" height="72" rx="12" fill="#ffffff" opacity="0.055" stroke="{colour}" stroke-width="1" stroke-opacity="0.5"/>')
+            add(f'<rect x="{x}" y="{by+66}" width="{w}" height="72" rx="12" fill="#ffffff" opacity="0.055" stroke="{color}" stroke-width="1" stroke-opacity="0.5"/>')
             text(x + w / 2, by + 96, name, size=16.5, fill=LILAC, anchor="middle",
                  weight="bold", family=MONO)
             text(x + w / 2, by + 120, what, size=12.5, fill=FAINT, anchor="middle")
@@ -486,7 +486,7 @@ def build_flow() -> tuple[Path, Path]:
     flow_output(1346)
     add("</svg>")
 
-    # SVG blur filters make browsers re-rasterise on every zoom step, which
+    # SVG blur filters make browsers re-rasterize on every zoom step, which
     # reads as flicker. The standalone graphic is viewed and zoomed, so it does
     # without them; the print poster keeps them.
     body = "\n".join(out).replace(' filter="url(#soft)"', "").replace(' style=\'filter="url(#glow)"\'', "")
@@ -497,7 +497,7 @@ def build_flow() -> tuple[Path, Path]:
     png = DOCS / "PixieDuster-Flow.png"
     subprocess.run(["rsvg-convert", "-w", str(W * 2), "-o", str(png), str(svg)], check=True)
 
-    # A web copy, deliberately raster. Served as SVG, the browser re-rasterises
+    # A web copy, deliberately raster. Served as SVG, the browser re-rasterizes
     # ~300 elements and a full-canvas gradient at every zoom step, which reads
     # as the whole graphic flashing. A bitmap is simply interpolated instead.
     web = DOCS / "PixieDuster-Flow-web.png"

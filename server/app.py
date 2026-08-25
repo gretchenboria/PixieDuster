@@ -1,4 +1,4 @@
-"""PixieDuster hosted API — a metered proxy in front of Gemini.
+"""PixieDuster hosted API - a metered proxy in front of Gemini.
 
 The Gemini key lives here as a Space secret and never reaches a client. Callers
 authenticate with their own Hugging Face token; we verify it against the HF API,
@@ -81,7 +81,7 @@ def _connect() -> sqlite3.Connection:
         path = DB_PATH
     except OSError:
         # No persistent volume on this Space. Fall back to ephemeral storage and
-        # accept that a restart resets counters — better than refusing to run.
+        # accept that a restart resets counters - better than refusing to run.
         path = Path("/tmp/quota.db")
     conn = sqlite3.connect(path, timeout=10)
     conn.execute("PRAGMA journal_mode=WAL")

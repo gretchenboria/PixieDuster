@@ -1,4 +1,4 @@
-"""PixieDuster — clone a writing voice out of a git repo into an AI persona prompt."""
+"""PixieDuster - clone a writing voice out of a git repo into an AI persona prompt."""
 
 from __future__ import annotations
 

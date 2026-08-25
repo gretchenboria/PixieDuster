@@ -315,7 +315,7 @@ if st.session_state.step == 1:
             "<div style='background:linear-gradient(135deg, rgba(255,215,0,0.10), rgba(255,215,0,0.03));"
             " border:1.5px solid #ffd700; border-radius:14px; padding:20px 22px; height:100%;'>"
             "<div style='color:#ffd700; font-weight:700; font-size:1.05rem;'>"
-            "<i class='fa-solid fa-terminal'></i>&nbsp; In your terminal &mdash; point it at everything</div>"
+            "<i class='fa-solid fa-terminal'></i>&nbsp; In your terminal - point it at everything</div>"
             "<p style='color:#d1c4e9; font-size:0.92rem; margin:10px 0 0; line-height:1.55;'>"
             "Give it a <b style='color:#ffd700;'>whole folder</b> and it reads every file inside: "
             "years of notes, screenshots of texts, photos of handwriting, saved emails, PDFs. "
@@ -323,7 +323,7 @@ if st.session_state.step == 1:
             "</p>"
             "<p style='color:#d1c4e9; font-size:0.92rem; margin:10px 0 0; line-height:1.55;'>"
             "Or give it a <b style='color:#ffd700;'>git repository</b> and it mines your commit "
-            "messages, README and docstrings &mdash; writing you never thought of as writing.</p>"
+            "messages, README and docstrings - writing you never thought of as writing.</p>"
             "</div>",
             unsafe_allow_html=True,
         )
@@ -359,7 +359,7 @@ if st.session_state.step == 1:
     st.markdown("<h3 style='text-align:center;'>How it works</h3>", unsafe_allow_html=True)
     st.markdown(
         "<p style='text-align:center; color:#d1c4e9;'>Your writing goes in as one thing. It comes "
-        "out measured against four empirical rubrics and a theory of humour, written up as "
+        "out measured against four empirical rubrics and a theory of humor, written up as "
         "one file you can paste into any AI.</p>",
         unsafe_allow_html=True,
     )
@@ -475,13 +475,6 @@ elif st.session_state.step == 2:
     user_answers_formatted = "\n\n".join(user_selections)
     
     st.write("---")
-    st.markdown("#### 🎭 Persona Tuning Levers")
-    humor_level = st.slider(
-        "Humor Level (Benign Violation Theory)", 
-        min_value=0, max_value=10, value=5, 
-        help="Adjusts how often the persona attempts humor using McGraw's Benign Violation Theory (simultaneously violating a norm while remaining benign/safe)."
-    )
-    
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Go Back"):
@@ -498,16 +491,14 @@ elif st.session_state.step == 2:
                             f"Here are the original writing samples for '{st.session_state.target_name}'. "
                             f"I also asked the user some multiple choice questions to refine the persona.\n"
                             f"Here are their answers:\n{user_answers_formatted}\n\n"
-                            f"HUMOR INSTRUCTION: The user has set the humor level to {humor_level} out of 10. "
-                            "Based on Peter McGraw's Benign Violation Theory, formulate rules for this persona's humor. "
-                            "Humor happens when a situation is a violation, the situation is benign, and both occur simultaneously. "
-                            "Ensure the persona's pacing, wit, and conversational style reflect this specific level of humor, completely avoiding plain malignant jabs or asynchronous benign jokes.\n\n"
+
                             "PSYCHOLOGICAL & EMPIRICAL PROFILING RUBRIC:\n"
                             "You must evaluate the text and answers strictly using the following empirical rubrics:\n"
                             "1. LIWC Lexical/Syntactic Fingerprint: Analyze Pronoun Orientation (1st person singular vs plural vs 2nd/3rd), Affective Processes (Positive vs Negative Emotion clusters), Cognitive Processes (Insight, Causation, Tentativeness vs Certainty), and Temporal Orientation (Past/Present/Future).\n"
                             "2. The Big Five (OCEAN): Map linguistic data to Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism based on lexical richness, structure, social words, hedging, and self-doubt.\n"
                             "3. Cognitive Style & Epistemic Stance: Is the author analytical or narrative? Do they rely on empirical citations, personal anecdotes, or axioms? Do they display dialectical thinking or binary/dogmatic thinking?\n"
-                            "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n\n"
+                            "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n"
+                            "5. Humor (Peter McGraw's Benign Violation Theory): Work out from the evidence whether this person is funny, how often, and by what mechanism. Humor happens when something violates a norm while simultaneously staying benign; violation alone is hostility, benign alone is bland. Identify which norms this author is willing to violate, what keeps those violations safe, and how dry or broad the delivery is. If the evidence shows someone who rarely jokes, say so plainly and specify restraint rather than inventing wit they do not have. If it shows someone consistently funny, give the specific rules and one example line in their voice. Never produce plain malignant jabs, and never separate the violation from the benign frame.\n\n"
                             "Based on ALL of this, extract their unique terminology standard, recurring thought patterns, sentence structure, and overall persona. "
                             "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
                         )
@@ -619,7 +610,7 @@ README and documentation prose, issue replies, changelog entries, and anything
 you say back to the user.
 
 Do **not** apply it to code itself. It says nothing about naming conventions,
-formatting, architecture, language choice, testing strategy, or lint rules —
+formatting, architecture, language choice, testing strategy, or lint rules -
 those come from the repository's own configuration and existing source, and
 they win over anything below. If a rule here would change what a program does
 or how it is structured, ignore that rule.
@@ -658,7 +649,7 @@ exists.
     st.markdown(
         "<p style='color:#8a7da3; font-size:0.82rem; margin-top:10px;'>"
         "The three agent files carry a short preamble telling the tool this governs how it "
-        "<i>writes</i> &mdash; commit messages, docs, replies &mdash; not how it writes code."
+        "<i>writes</i> - commit messages, docs, replies - not how it writes code."
         "</p>",
         unsafe_allow_html=True,
     )

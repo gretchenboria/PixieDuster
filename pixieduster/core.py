@@ -21,7 +21,6 @@ from .prompts import (
     INVENT_QUESTIONS_INSTRUCTION,
     INVENT_RUBRIC,
     ANTI_AI_PROMPT_TEMPLATE,
-    HUMOR_INSTRUCTION,
     PERSONA_RUBRIC,
     QUESTION_SCHEMA,
     QUESTIONS_INSTRUCTION,
@@ -57,7 +56,7 @@ def _sanitize(text: object, api_key: str | None = None) -> str:
     """Strip anything key-shaped out of ``text``.
 
     Removes ``?key=…`` / ``&key=…`` query parameters, redacts Google API keys
-    by their ``AIza`` prefix, and — when the live key is known — removes that
+    by their ``AIza`` prefix, and - when the live key is known - removes that
     exact string too.
     """
     out = str(text)
@@ -399,8 +398,8 @@ def generate_questions(
 ) -> list[Question]:
     """Ask the model for ``n`` multiple-choice profiling questions.
 
-    Tolerates both response shapes the API produces — a bare JSON array and
-    ``{"questions": [...]}`` — and strips ``` fences before parsing.
+    Tolerates both response shapes the API produces - a bare JSON array and
+    ``{"questions": [...]}`` - and strips ``` fences before parsing.
 
     Raises:
         GeminiError: On an API failure, or on JSON the model malformed. The
@@ -453,7 +452,6 @@ def generate_persona(
     target_name: str,
     samples: Sequence[Sample],
     answers: Sequence[tuple[str, str]],
-    humor_level: int,
     *,
     description: str | None = None,
     files: Sequence[tuple[str, str, bytes]] | None = None,
@@ -464,7 +462,6 @@ def generate_persona(
 
     Args:
         answers: ``(question, chosen_option)`` pairs from the Q&A step.
-        humor_level: 0-10, fed to the Benign Violation Theory block.
         files: Optional raw uploads, for callers (the web app) that have them.
 
     Returns:
@@ -482,8 +479,6 @@ def generate_persona(
             INVENT_RUBRIC.format(target_name=name, description=description)
             + "\n\nThe creator answered these questions about it:\n"
             + formatted_answers
-            + "\n\n"
-            + HUMOR_INSTRUCTION.format(humor_level=humor_level)
         )
         extracted = call_gemini(api_key, model, instruction, timeout=timeout,
                                 base_url=base_url)
@@ -500,7 +495,6 @@ def generate_persona(
         + f"Here are the original writing samples for '{name}'. "
         "I also asked the user some multiple choice questions to refine the persona.\n"
         f"Here are their answers:\n{formatted_answers}\n\n"
-        + HUMOR_INSTRUCTION.format(humor_level=humor_level)
         + "\n\n"
         + PERSONA_RUBRIC
     )

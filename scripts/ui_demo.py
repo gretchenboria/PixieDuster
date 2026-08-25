@@ -46,7 +46,7 @@ author would rather cut a clause than soften a claim.
 ## Lexical Fingerprint
 - **Pronoun orientation:** heavy first-person singular, almost no "we"
 - **Temporal stance:** present tense, occasionally the historical present
-- **Hedging:** rare — certainty markers outnumber tentative ones 4:1
+- **Hedging:** rare - certainty markers outnumber tentative ones 4:1
 
 ## Big Five
 | Trait | Reading |
@@ -110,7 +110,7 @@ def main() -> None:
     if interactive:
         answer = ui.ask_choice(
             "Which rhythm best matches the author?",
-            ["Staccato — short, punchy sentences", "Winding — long, subordinate clauses", "Both, by mood"],
+            ["Staccato - short, punchy sentences", "Winding - long, subordinate clauses", "Both, by mood"],
             2,
             3,
         )

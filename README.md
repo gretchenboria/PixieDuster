@@ -1,7 +1,7 @@
 # PixieDuster
 
 **Give an AI a real identity to be.** One sentence, or a folder of your writing,
-becomes a full specification of a voice — which an AI then writes in.
+becomes a full specification of a voice - which an AI then writes in.
 
 [**Try it in the browser**](https://huggingface.co/spaces/gretchenboria/PixieDuster) ·
 no sign-up, no API key, nothing to install.
@@ -10,12 +10,12 @@ no sign-up, no API key, nothing to install.
 
 ## What it actually does
 
-Point it at a folder of your own writing — photos of handwritten notes,
+Point it at a folder of your own writing - photos of handwritten notes,
 screenshots of text messages, saved emails, old essays, a chat log. Or skip the
 evidence entirely and describe a character in a sentence.
 
 It asks you three questions about the things writing can't reveal on its own,
-then measures the voice against four empirical rubrics and a theory of humour,
+then measures the voice against four empirical rubrics and a theory of humor,
 and writes the result to a single file. Paste that file into any AI and it
 becomes that identity.
 
@@ -24,7 +24,7 @@ becomes that identity.
  Let's fix it before your sanity hits 1%."
 ```
 
-That's a desktop robot generated from one sentence, with the humour dial at 8.
+That's a desktop robot generated from one sentence, with the humor dial at 8.
 
 ## The command line version
 
@@ -42,23 +42,23 @@ Then `pixieduster chat` to talk to what you made, or
 
 ## What it measures
 
-Not vibes. Four empirical rubrics plus one theory of humour:
+Not vibes. Four empirical rubrics plus one theory of humor:
 
 | | |
 |---|---|
-| **LIWC** (Pennebaker) | Function words rather than topic words — pronoun orientation, certainty vs hedging, temporal focus. The basis of forensic authorship work. |
+| **LIWC** (Pennebaker) | Function words rather than topic words - pronoun orientation, certainty vs hedging, temporal focus. The basis of forensic authorship work. |
 | **The Big Five** (OCEAN) | Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism, read off lexical evidence. |
 | **Cognitive style** | Analytical or narrative? Reasoning from evidence, anecdote, or conviction? |
-| **Sociolinguistics** | Register, jargon, syntactic rhythm, punctuation habits — the involuntary tells. |
-| **Benign Violation** (McGraw) | Funny is a violation that stays benign. This is what the humour slider sets. |
+| **Sociolinguistics** | Register, jargon, syntactic rhythm, punctuation habits - the involuntary tells. |
+| **Benign Violation** (McGraw) | Funny is a violation that stays benign. This is what the humor slider sets. |
 
 ## Your writing, and where it goes
 
-Your samples are sent to Google's Gemini API to be analysed. That is the
-product, not a side effect — so it is made visible rather than hidden:
+Your samples are sent to Google's Gemini API to be analyzed. That is the
+product, not a side effect - so it is made visible rather than hidden:
 
 - `--dry-run` prints the exact payload and sends nothing at all.
-- Every send is scanned first against 22 secret-detection rules — AWS keys,
+- Every send is scanned first against 22 secret-detection rules - AWS keys,
   GitHub tokens, PEM blocks, connection strings with inline credentials.
 - `--scrub` redacts anything found; otherwise you are asked.
 - `.gitignore` is respected, and nothing outside the folder you name is read.
@@ -82,10 +82,10 @@ ceiling. Past that, bring your own key with `--api-key`, or set one once with
 | Path | What it is |
 |---|---|
 | `pixieduster/` | The CLI |
-| `worker/` | Cloudflare Worker — the metered Gemini proxy |
+| `worker/` | Cloudflare Worker - the metered Gemini proxy |
 | `web/` | The browser app, exactly as deployed to Hugging Face Spaces |
 | `docs/` | The poster, quick start, and architecture reference |
-| `tests/` | 446 tests, all offline — no API key required to run them |
+| `tests/` | 446 tests, all offline - no API key required to run them |
 
 ## Requirements
 

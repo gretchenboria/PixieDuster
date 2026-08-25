@@ -115,7 +115,7 @@ def _plain_print(text: str = "") -> None:
 
 
 # --------------------------------------------------------------------------
-# Colour helpers
+# Color helpers
 # --------------------------------------------------------------------------
 
 
@@ -129,7 +129,7 @@ def _rgb_to_hex(rgb: tuple[int, int, int]) -> str:
 
 
 def _lerp(a: str, b: str, t: float) -> str:
-    """Linearly interpolate between two hex colours. ``t`` in [0, 1]."""
+    """Linearly interpolate between two hex colors. ``t`` in [0, 1]."""
     t = max(0.0, min(1.0, t))
     ar, ag, ab = _hex_to_rgb(a)
     br, bg, bb = _hex_to_rgb(b)
@@ -143,7 +143,7 @@ def _lerp(a: str, b: str, t: float) -> str:
 
 
 def gradient(stops: Sequence[str], n: int) -> list[str]:
-    """Return ``n`` hex colours interpolated across the given colour stops."""
+    """Return ``n`` hex colors interpolated across the given color stops."""
     if n <= 0:
         return []
     if n == 1 or len(stops) == 1:
@@ -776,7 +776,7 @@ def _slider_renderable(label: str, lo: int, hi: int, value: int, help: str) -> R
     line = Text("  ")
     line.append(bar[:knob], style=DIM_GOLD)
     line.append("●", style=f"bold {GOLD}")
-    line.append(bar[knob + 1 :], style="grey37")
+    line.append(bar[knob + 1 :], style="gray37")
     line.append("   ")
     line.append(str(value), style=f"bold {GOLD}")
     line.append(f" / {hi}", style=f"dim {MAUVE}")
@@ -937,7 +937,7 @@ def _spaced(text: str) -> str:
 
 
 def _gold_rule(width: int) -> Text:
-    """A rule that fades gold at the centre, like the web certificate's <hr>."""
+    """A rule that fades gold at the center, like the web certificate's <hr>."""
     width = max(4, width)
     text = Text()
     for i in range(width):
@@ -1051,7 +1051,7 @@ _SEVERITY_STYLE = {"high": "bold red", "medium": DIM_GOLD, "low": MAUVE}
 
 
 def findings_table(findings: Sequence[Any]) -> None:
-    """Show secret-scan findings, severity-coloured (red for high)."""
+    """Show secret-scan findings, severity-colored (red for high)."""
     out = _out()
 
     if not findings:

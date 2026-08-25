@@ -289,7 +289,7 @@ class _Attribution:
     def line_authors(self, rel: str) -> list[str] | None:
         """Per-line author emails for ``rel`` (index 0 == line 1).
 
-        ``None`` means "blame unavailable" — no budget left, or git failed —
+        ``None`` means "blame unavailable" - no budget left, or git failed -
         and callers should fall back to whole-file attribution.
         """
         if not self.enabled:
@@ -544,7 +544,7 @@ def mine_commits(
 _DOC_SUFFIXES = {".md", ".markdown", ".mdx", ".rst", ".txt"}
 
 _DOC_SKIP_NAME_RE = re.compile(
-    r"^(?:changelog|change_log|changes|history|news|license|licence|copying|"
+    r"^(?:changelog|change_log|changes|history|news|license|license|copying|"
     r"notice|authors|contributors|codeowners|patents|third[-_]party[-_]notices|"
     r"requirements[\w.-]*|constraints)\b",
     re.IGNORECASE,
@@ -910,7 +910,7 @@ def mine_comments(
 
     When ``author`` is given, files that author never touched are skipped and
     each surviving comment block must be at least
-    :data:`COMMENT_OWNERSHIP_MIN` owned by them according to ``git blame`` — so
+    :data:`COMMENT_OWNERSHIP_MIN` owned by them according to ``git blame`` - so
     a file with many contributors only yields the comments they actually wrote.
     Blame is capped and time-boxed; see :class:`_Attribution`.
 
@@ -984,7 +984,7 @@ def _author_needles(repo: Path, author: str | None) -> set[str]:
     """Identity fragments for ``author``, for matching against GitHub logins.
 
     A git email rarely equals a GitHub login, so we also pull the author's git
-    display name out of the log and normalise both. An empty set means "match
+    display name out of the log and normalize both. An empty set means "match
     everyone".
     """
     if not author:

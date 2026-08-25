@@ -2,9 +2,9 @@
 
 These strings are the substance of the product: the anti-AI-tells style guide,
 the profiling-question instruction, the LIWC / Big-Five / cognitive-style /
-sociolinguistics rubric and the Benign Violation Theory humor block. They are
+sociolinguistics rubric, with humor folded in as a fifth dimension. They are
 carried over from the Streamlit app unchanged in substance; only the
-parameterisation (``{target_name}``, ``{n}``, ``{humor_level}``) is new.
+parameterization (``{target_name}``, ``{n}``) is new.
 """
 
 from __future__ import annotations
@@ -33,6 +33,20 @@ QUESTIONS_INSTRUCTION = (
     '{{"questions": [{{"question": "...", "options": ["...", "..."]}}]}}'
 )
 
+#: Humor as a dimension of the analysis, not a dial. Appended to whichever
+#: rubric is in play so the model works it out from the evidence.
+HUMOR_INSTRUCTION = (
+    "5. Humor (Peter McGraw's Benign Violation Theory): Work out from the evidence "
+    "whether this person is funny, how often, and by what mechanism. Humor happens when "
+    "something violates a norm while simultaneously staying benign; violation alone is "
+    "hostility, benign alone is bland. Identify which norms this author is willing to "
+    "violate, what keeps those violations safe, and how dry or broad the delivery is. "
+    "If the evidence shows someone who rarely jokes, say so plainly and specify restraint "
+    "rather than inventing wit they do not have. If it shows someone consistently funny, "
+    "give the specific rules and one example line in their voice. Never produce plain "
+    "malignant jabs, and never separate the violation from the benign frame.\n\n"
+)
+
 #: Strict responseSchema handed to the Gemini API for the questions call.
 QUESTION_SCHEMA: dict = {
     "type": "ARRAY",
@@ -49,14 +63,6 @@ QUESTION_SCHEMA: dict = {
     },
 }
 
-#: The Benign Violation Theory humor block. Placeholder: ``{humor_level}``.
-HUMOR_INSTRUCTION = (
-    "HUMOR INSTRUCTION: The user has set the humor level to {humor_level} out of 10. "
-    "Based on Peter McGraw's Benign Violation Theory, formulate rules for this persona's humor. "
-    "Humor happens when a situation is a violation, the situation is benign, and both occur simultaneously. "
-    "Ensure the persona's pacing, wit, and conversational style reflect this specific level of humor, completely avoiding plain malignant jabs or asynchronous benign jokes."
-)
-
 #: The empirical profiling rubric. Verbatim from app.py.
 PERSONA_RUBRIC = (
     "PSYCHOLOGICAL & EMPIRICAL PROFILING RUBRIC:\n"
@@ -64,7 +70,8 @@ PERSONA_RUBRIC = (
     "1. LIWC Lexical/Syntactic Fingerprint: Analyze Pronoun Orientation (1st person singular vs plural vs 2nd/3rd), Affective Processes (Positive vs Negative Emotion clusters), Cognitive Processes (Insight, Causation, Tentativeness vs Certainty), and Temporal Orientation (Past/Present/Future).\n"
     "2. The Big Five (OCEAN): Map linguistic data to Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism based on lexical richness, structure, social words, hedging, and self-doubt.\n"
     "3. Cognitive Style & Epistemic Stance: Is the author analytical or narrative? Do they rely on empirical citations, personal anecdotes, or axioms? Do they display dialectical thinking or binary/dogmatic thinking?\n"
-    "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n\n"
+    "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n"
+    + HUMOR_INSTRUCTION +
     "Based on ALL of this, extract their unique terminology standard, recurring thought patterns, sentence structure, and overall persona. "
     "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
 )
@@ -101,7 +108,8 @@ INVENT_RUBRIC = (
     "3. Cognitive Style & Epistemic Stance: Analytical or narrative? Does it reason from "
     "evidence, anecdote, or conviction? Dialectical or binary?\n"
     "4. Sociolinguistics: Register, jargon, syntactic rhythm (staccato vs winding), punctuation "
-    "habits, characteristic openings and closings, and words it would never use.\n\n"
+    "habits, characteristic openings and closings, and words it would never use.\n"
+    + HUMOR_INSTRUCTION +
     "Give it real edges: things it dislikes, a way it deflects, a topic it warms to. A persona "
     "that is uniformly pleasant is not a character. "
     "Output ONLY the 'Terminology Standards & Persona' summary, written to be injected directly "
@@ -129,7 +137,7 @@ README and documentation prose, issue replies, changelog entries, and anything
 you say back to the user.
 
 Do **not** apply it to code itself. It says nothing about naming conventions,
-formatting, architecture, language choice, testing strategy, or lint rules —
+formatting, architecture, language choice, testing strategy, or lint rules -
 those come from the repository's own configuration and existing source, and
 they win over anything below. If a rule here would change what a program does
 or how it is structured, ignore that rule.
@@ -145,7 +153,7 @@ exists.
 #: Placeholders: ``{persona}``, ``{draft}``.
 DIFF_INSTRUCTION = """You are a forensic stylometrist. Below is a persona and voice specification for one author, followed by a draft that is supposed to have been written in that voice.
 
-Judge how well the draft matches the persona. Judge voice only: register, diction, rhythm, sentence structure, punctuation habits, pronoun orientation, hedging, humor, and the persona's stated terminology standards. Do not judge whether the draft is correct, well-argued, or good — only whether it sounds like this author.
+Judge how well the draft matches the persona. Judge voice only: register, diction, rhythm, sentence structure, punctuation habits, pronoun orientation, hedging, humor, and the persona's stated terminology standards. Do not judge whether the draft is correct, well-argued, or good - only whether it sounds like this author.
 
 Report in exactly this shape, and nothing else:
 
@@ -154,7 +162,7 @@ SCORE: <0-100>
 VERDICT: <one sentence>
 
 DEVIATIONS:
-- <quote the exact offending phrase from the draft> — <why it breaks the voice> — <a rewrite in the persona's voice>
+- <quote the exact offending phrase from the draft> - <why it breaks the voice> - <a rewrite in the persona's voice>
 
 (List every real deviation, worst first. Quote the draft literally; never invent a quote. If there are none, write "- none".)
 

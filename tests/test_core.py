@@ -344,7 +344,7 @@ def test_generate_questions_error_has_no_key(captured):
 def test_generate_persona_wraps_in_anti_ai_template(captured):
     captured["response"] = text_reply("She writes in short bursts.")
     doc = core.generate_persona(
-        FAKE_KEY, "m", "Gretchen", SAMPLES, [("Q1?", "a")], humor_level=7
+        FAKE_KEY, "m", "Gretchen", SAMPLES, [("Q1?", "a")]
     )
     assert doc.startswith("# AI Persona & Style Guide")
     assert "She writes in short bursts." in doc
@@ -355,11 +355,14 @@ def test_generate_persona_wraps_in_anti_ai_template(captured):
 def test_generate_persona_prompt_carries_the_rubric(captured):
     captured["response"] = text_reply("persona")
     core.generate_persona(
-        FAKE_KEY, "m", "Gretchen", SAMPLES, [("Q1?", "option a")], humor_level=7
+        FAKE_KEY, "m", "Gretchen", SAMPLES, [("Q1?", "option a")]
     )
     prompt = captured["payload"]["contents"][0]["parts"][0]["text"]
     assert "Q: Q1?\nA: option a" in prompt
-    assert "humor level to 7 out of 10" in prompt
+    # Humor is a fifth dimension of the rubric now, worked out from the
+    # evidence rather than dialled in by the caller.
+    assert "Benign Violation Theory" in prompt
+    assert "Work out from the evidence" in prompt
     assert "Benign Violation Theory" in prompt
     assert "LIWC Lexical/Syntactic Fingerprint" in prompt
     assert "Big Five (OCEAN)" in prompt
@@ -369,5 +372,5 @@ def test_generate_persona_prompt_carries_the_rubric(captured):
 
 def test_generate_persona_braces_in_output_survive(captured):
     captured["response"] = text_reply("uses {curly} braces a lot")
-    doc = core.generate_persona(FAKE_KEY, "m", "G", SAMPLES, [], humor_level=0)
+    doc = core.generate_persona(FAKE_KEY, "m", "G", SAMPLES, [])
     assert "uses {curly} braces a lot" in doc

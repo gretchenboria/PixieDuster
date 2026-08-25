@@ -10,7 +10,7 @@ screenshot, a PDF, an email -- is passed through untouched for Gemini to read,
 including handwriting.
 
 Text becomes :class:`~pixieduster.types.Sample` objects. Anything the model has
-to look at rather than read — PDFs and images — is returned as raw
+to look at rather than read - PDFs and images - is returned as raw
 ``(filename, mimetype, bytes)`` tuples for the API's ``inlineData`` parts.
 """
 
@@ -125,7 +125,7 @@ def load(
     """Load writing samples from files and folders.
 
     Returns:
-        ``(samples, files)`` — text as :class:`Sample` objects, and PDFs and
+        ``(samples, files)`` - text as :class:`Sample` objects, and PDFs and
         images as ``(filename, mimetype, bytes)`` tuples for the API.
 
     Raises:
