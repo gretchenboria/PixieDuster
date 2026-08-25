@@ -607,9 +607,12 @@ def test_smoke_against_this_repo(monkeypatch: pytest.MonkeyPatch) -> None:
     samples = mining.mine_all(REPO_ROOT)
     assert samples
     assert all(s.text.strip() for s in samples)
-    joined = "\n".join(s.text for s in samples)
-    assert "Co-Authored-By" not in joined
-    assert "claude.ai/code" not in joined
+    # Trailer stripping is a property of commit samples specifically. Docs and
+    # comments may legitimately contain the word -- mining.py's own docstring
+    # explains that it strips trailers, and that file is tracked.
+    commits = "\n".join(s.text for s in samples if s.kind == "commit")
+    assert "Co-Authored-By" not in commits
+    assert "claude.ai/code" not in commits
 
 
 # --------------------------------------------------------------------------
