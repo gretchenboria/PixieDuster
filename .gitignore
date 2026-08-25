@@ -1,2 +1,11 @@
 .env
 .venv/
+.venv-cli/
+venv/
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+build/
+*.egg-info/

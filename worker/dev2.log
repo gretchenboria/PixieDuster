@@ -1,0 +1,40 @@
+
+ ⛅️ wrangler 4.125.0
+────────────────────
+Using secrets defined in .dev.vars
+Your Worker has access to the following bindings:
+Binding                                                                Resource                  Mode
+env.QUOTA_KV (757150f796d441e7ac01b3e42f1dc9a2)                        KV Namespace              local
+env.DB (pixieduster-quota)                                             D1 Database               local
+env.DAILY_PER_USER ("5")                                               Environment Variable      local
+env.DAILY_PER_ANON ("2")                                               Environment Variable      local
+env.ALLOWED_ORIGINS ("https://gretchenboria-pixieduster.sta...")       Environment Variable      local
+env.DAILY_GLOBAL ("400")                                               Environment Variable      local
+env.MAX_BODY_BYTES ("6291456")                                         Environment Variable      local
+env.ALLOWED_MODELS ("gemini-3.6-flash,gemini-2.5-flash,gem...")        Environment Variable      local
+env.GEMINI_API_KEY ("(hidden)")                                        Environment Variable      local
+env.TURNSTILE_SECRET ("(hidden)")                                      Environment Variable      local
+env.IP_SALT ("(hidden)")                                               Environment Variable      local
+
+⎔ Starting local server...
+Wrangler detected this dev session is running in an AI agent.
+The Local Explorer API is available at http://localhost:8788/cdn-cgi/local/explorer/api
+Useful routes:
+  GET http://localhost:8788/cdn-cgi/local/explorer/api/local/workers - local Workers and bindings
+  GET http://localhost:8788/cdn-cgi/local/explorer/api/storage/kv/namespaces - KV namespaces
+  GET http://localhost:8788/cdn-cgi/local/explorer/api/d1/database - D1 databases
+  GET http://localhost:8788/cdn-cgi/local/explorer/api/r2/buckets - R2 buckets
+  GET http://localhost:8788/cdn-cgi/local/explorer/api/workers/durable_objects/namespaces - Durable Object namespaces
+  GET http://localhost:8788/cdn-cgi/local/explorer/api/workflows - Workflows
+  POST http://localhost:8788/cdn-cgi/local/explorer/api/local/observability/query - run a read-only SQL query (SELECT/WITH only) over captured request traces and console logs. Tables: spans, logs (read attributes via json(attributes)). Example:
+    curl -X POST http://localhost:8788/cdn-cgi/local/explorer/api/local/observability/query -H 'Content-Type: application/json' -d '{"sql":"SELECT service, name, outcome, duration_ms FROM spans WHERE parent_id IS NULL LIMIT 20"}'
+If the routes above don't cover what you need, fetch the full OpenAPI schema (large - use only as a last resort):
+  GET http://localhost:8788/cdn-cgi/local/explorer/api - OpenAPI schema
+[wrangler:info] Ready on http://localhost:8788
+[wrangler:info] GET /api/health 200 OK (22ms)
+[wrangler:info] POST /api/session 200 OK (204ms)
+[wrangler:info] GET /api/me 200 OK (5ms)
+[wrangler:info] POST /api/models/gemini-3.6-flash:generateContent 200 OK (1834ms)
+[wrangler:info] POST /api/models/gemini-3.6-flash:generateContent 200 OK (1404ms)
+[wrangler:info] POST /api/models/gemini-3.6-flash:generateContent 429 Too Many Requests (5ms)
+[wrangler:info] GET /api/me 401 Unauthorized (2ms)

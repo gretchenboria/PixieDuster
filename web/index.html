@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>PixieDuster - AI Persona Cloning</title>
+    <!-- Turnstile: proves the visitor is a person, so the hosted key can be
+         used without anyone typing a key of their own. The sitekey is public
+         by design; the matching secret lives only on the Worker. -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <style>
+      #pd-gate {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 18px; background: radial-gradient(circle at top, #2b1845, #0f081c);
+        color: #e2d1f9; font-family: Inter, system-ui, sans-serif; text-align: center;
+      }
+      #pd-gate h1 { color: #ffd700; font-size: 1.4rem; margin: 0; }
+      #pd-gate p  { color: #d1c4e9; max-width: 30rem; margin: 0 1rem; font-size: .95rem; }
+      #pd-gate.done { display: none; }
+    </style>
+
+    <!-- Stlite CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/stlite.css"
+    />
+  </head>
+  <body>
+    <div id="pd-gate">
+      <h1>PixieDuster</h1>
+      <p>One quick check that you are a person, then you are in. No sign-up,
+         no API key, nothing to install.</p>
+      <div id="pd-turnstile"></div>
+      <p id="pd-status" style="font-size:.8rem;color:#8a7da3;">Loading…</p>
+    </div>
+
+    <div id="root"></div>
+    <!-- Stlite JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/stlite.js"></script>
+    <script>
+      // Exchange one Turnstile pass for a short-lived session the Python app
+      // reads out of window.pdSession. Tokens are single-use; a session is not.
+      window.pdApi = "https://pixieduster-api.me-c41.workers.dev/api";
+      window.pdSession = "";
+
+      function pdReady() {
+        document.getElementById("pd-gate").classList.add("done");
+      }
+
+      async function pdVerified(token) {
+        const status = document.getElementById("pd-status");
+        status.textContent = "Checking…";
+        try {
+          const r = await fetch(window.pdApi + "/session", {
+            method: "POST",
+            headers: { "x-turnstile-token": token },
+          });
+          if (!r.ok) throw new Error(await r.text());
+          window.pdSession = (await r.json()).session;
+          pdReady();
+        } catch (e) {
+          status.textContent =
+            "Could not start a session. Reload the page, or use the CLI with your own key.";
+          console.error(e);
+        }
+      }
+
+      window.onloadTurnstileCallback = function () {
+        document.getElementById("pd-status").textContent = "";
+        turnstile.render("#pd-turnstile", {
+          sitekey: "0x4AAAAAAEb4atlzbWGoBrFJ",
+          theme: "dark",
+          callback: pdVerified,
+          "error-callback": function () {
+            document.getElementById("pd-status").textContent =
+              "Verification failed. Reload the page to try again.";
+          },
+        });
+      };
+      // api.js may already have loaded by the time this runs.
+      if (window.turnstile) window.onloadTurnstileCallback();
+      else document.addEventListener("DOMContentLoaded", function () {
+        if (window.turnstile) window.onloadTurnstileCallback();
+      });
+
+      stlite.mount(
+        {
+          requirements: ["requests", "python-dotenv"],
+          entrypoint: "app.py",
+          files: {
+            "app.py": {
+              url: "./app.py",
+            },
+            "logo.png": {
+                url: "./logo.png",
+            }
+          },
+        },
+        document.getElementById("root")
+      );
+    </script>
+  </body>
+</html>

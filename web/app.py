@@ -7,44 +7,111 @@ from dotenv import load_dotenv
 import time
 import base64
 
-from pixieduster.core import call_gemini, chat_gemini
-from pixieduster.prompts import (
-    ANTI_AI_PROMPT_TEMPLATE,
-    HUMOR_INSTRUCTION,
-    PERSONA_RUBRIC,
-    QUESTION_SCHEMA,
-    QUESTIONS_INSTRUCTION,
-)
-
 st.set_page_config(page_title="PixieDuster", layout="centered", page_icon="logo.png")
 
-# Load environment variables (for local development)
-load_dotenv(override=True)
+# The Gemini key lives on the PixieDuster Worker, never in this page. The
+# browser proves it is a person once (Turnstile, handled in index.html) and gets
+# a short-lived session, which index.html leaves on window.pdSession.
+API_ROOT = "https://pixieduster-api.me-c41.workers.dev/api"
 
-if "api_key" not in st.session_state:
-    st.session_state.api_key = os.environ.get("GEMINI_API_KEY")
 
-if not st.session_state.api_key:
-    st.markdown("<h3 style='text-align: center; color: #ffd700;'><i class='fa-solid fa-wand-magic-sparkles'></i> PixieDuster Authentication</h3>", unsafe_allow_html=True)
-    st.write("To use this serverless app, please enter your Gemini API Key. It remains strictly in your browser and is never stored.")
-    with st.form("auth_form"):
-        user_key = st.text_input("Gemini API Key:", type="password")
-        submitted = st.form_submit_button("Unlock PixieDuster", use_container_width=True)
-        if submitted and user_key:
-            st.session_state.api_key = user_key
-            st.rerun()
-    st.stop()
+def _session_token():
+    """Read the session minted by index.html. Empty string outside the browser."""
+    try:
+        from js import window  # available under stlite/Pyodide
+        return str(window.pdSession or "")
+    except Exception:
+        return ""
 
-api_key = st.session_state.api_key
+
+def _api_headers():
+    headers = {"Content-Type": "application/json"}
+    token = _session_token()
+    if token:
+        headers["x-session"] = token
+    return headers
+
+
+def _friendly_error(response):
+    """Turn a proxy error into something a person can act on."""
+    try:
+        detail = response.json().get("detail") or response.json().get("error", {}).get("message")
+    except Exception:
+        detail = None
+    if response.status_code == 429:
+        return detail or "The free daily limit has been reached. Try again tomorrow."
+    if response.status_code == 401:
+        return "Your session expired. Reload the page."
+    return detail or f"The service returned an error ({response.status_code})."
+
+
+api_key = None  # the key lives on the Worker now
 
 model_id = 'gemini-3.6-flash'
 
-def _as_file_tuples(uploaded_files):
-    """Adapt Streamlit UploadedFile objects to core's (name, mimetype, bytes)."""
-    return [
-        (f.name, f.type or "application/octet-stream", f.getvalue())
-        for f in (uploaded_files or [])
-    ]
+def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
+    url = f"{API_ROOT}/models/{model}:generateContent"
+    parts = [{"text": prompt}]
+    for file in uploaded_files:
+        mime_type = file.type
+        if mime_type.startswith("text/") or mime_type in ["application/json", "text/markdown", "text/csv"]:
+            text_data = file.getvalue().decode("utf-8", errors="replace")
+            parts.append({"text": f"\n\n--- Document: {file.name} ---\n{text_data}\n--- End Document ---\n"})
+        else:
+            b64_data = base64.b64encode(file.getvalue()).decode("utf-8")
+            parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
+    payload = {"contents": [{"parts": parts}]}
+    if require_json:
+        payload["generationConfig"] = {
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "question": {"type": "STRING"},
+                        "options": {
+                            "type": "ARRAY",
+                            "items": {"type": "STRING"}
+                        }
+                    },
+                    "required": ["question", "options"]
+                }
+            }
+        }
+    response = requests.post(url, headers=_api_headers(), json=payload)
+    if not response.ok:
+        raise Exception(_friendly_error(response))
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+def chat_gemini(api_key, model, sys_prompt, history, user_input):
+    url = f"{API_ROOT}/models/{model}:generateContent"
+    contents = []
+    for msg in history:
+        r = "user" if msg["role"] == "user" else "model"
+        contents.append({"role": r, "parts": [{"text": msg["content"]}]})
+    contents.append({"role": "user", "parts": [{"text": user_input}]})
+    payload = {
+        "systemInstruction": {"parts": [{"text": sys_prompt}]},
+        "contents": contents
+    }
+    response = requests.post(url, headers=_api_headers(), json=payload)
+    if not response.ok:
+        raise Exception(_friendly_error(response))
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+
+ANTI_AI_PROMPT_TEMPLATE = """# AI Persona & Style Guide
+
+## Core Directives
+1. **Human Authenticity:** Write with natural imperfections, active voice, and varied pacing. Never sound like a corporate robot or an over-enthusiastic AI.
+2. **Strict Vocabulary Bans:** Completely avoid AI "tells" (e.g., "delve," "tapestry," "crucial," "realm," "testament to," "in conclusion," "additionally").
+3. **Format Naturally:** Use paragraphs and natural transitions. Do not overuse bullet points, bolding, or symmetrical sentence structures. Do not summarize at the end.
+4. **Tone:** Speak directly and conversationally without hedging, generic positivity, or forced calls to action.
+
+## Author Persona & Terminology Standards
+{extracted_persona}
+"""
 
 
 # Improved CSS for better contrast and layout
@@ -220,6 +287,97 @@ if st.session_state.step == 1:
         st.markdown("<div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; text-align:center;'><i class='fa-solid fa-wand-magic-sparkles fa-2x' style='color:#daa520; margin-bottom:10px;'></i><br><b>3. Clone</b><br><small>Download the prompt.</small></div>", unsafe_allow_html=True)
 
     st.write("---")
+
+    # ---- How it works -------------------------------------------------
+    st.markdown("<h3 style='text-align:center;'>How it works</h3>", unsafe_allow_html=True)
+    st.markdown(
+        """<div style='display:flex; gap:8px; align-items:stretch; justify-content:center;
+ flex-wrap:wrap; margin:18px 0 26px;'><div style='flex:1; min-width:120px; text-align:center;'>
+<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
+ font-weight:700; line-height:34px; margin:0 auto 8px;'>1</div>
+<b style='color:#e2d1f9; font-size:0.9rem;'>Evidence</b>
+<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>your writing, or a description</div></div>
+<div style='color:#daa520; font-size:1.3rem; align-self:center;'>&rarr;</div><div style='flex:1; min-width:120px; text-align:center;'>
+<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
+ font-weight:700; line-height:34px; margin:0 auto 8px;'>2</div>
+<b style='color:#e2d1f9; font-size:0.9rem;'>Questions</b>
+<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>three, answered by you</div></div>
+<div style='color:#daa520; font-size:1.3rem; align-self:center;'>&rarr;</div><div style='flex:1; min-width:120px; text-align:center;'>
+<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
+ font-weight:700; line-height:34px; margin:0 auto 8px;'>3</div>
+<b style='color:#e2d1f9; font-size:0.9rem;'>Analysis</b>
+<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>four rubrics + humour</div></div>
+<div style='color:#daa520; font-size:1.3rem; align-self:center;'>&rarr;</div><div style='flex:1; min-width:120px; text-align:center;'>
+<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
+ font-weight:700; line-height:34px; margin:0 auto 8px;'>4</div>
+<b style='color:#e2d1f9; font-size:0.9rem;'>Your prompt</b>
+<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>paste into any AI</div></div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<p style='text-align:center; color:#d1c4e9;'>The analysis is not vibes. Your writing is "
+        "measured against four empirical rubrics and one theory of humour:</p>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("""<div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
+ border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
+<div style='display:flex; align-items:baseline; gap:10px;'>
+<i class='fa-solid fa-comment-dots' style='color:#ffd700;'></i>
+<b style='color:#ffd700; font-size:1.05rem;'>LIWC</b>
+<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>Pennebaker</span></div>
+<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Function words, not topic words. Pronoun orientation, certainty vs hedging, and where in time the writing sits.</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
+ border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
+<div style='display:flex; align-items:baseline; gap:10px;'>
+<i class='fa-solid fa-brain' style='color:#ffd700;'></i>
+<b style='color:#ffd700; font-size:1.05rem;'>The Big Five</b>
+<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>OCEAN</span></div>
+<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Openness, Conscientiousness, Extraversion, Agreeableness and Neuroticism, read off the lexical evidence.</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
+ border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
+<div style='display:flex; align-items:baseline; gap:10px;'>
+<i class='fa-solid fa-puzzle-piece' style='color:#ffd700;'></i>
+<b style='color:#ffd700; font-size:1.05rem;'>Cognitive style</b>
+<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>Epistemic stance</span></div>
+<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Analytical or narrative? Reasoning from evidence, from anecdote, or from conviction?</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
+ border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
+<div style='display:flex; align-items:baseline; gap:10px;'>
+<i class='fa-solid fa-wave-square' style='color:#ffd700;'></i>
+<b style='color:#ffd700; font-size:1.05rem;'>Sociolinguistics</b>
+<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>The mechanics</span></div>
+<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Register, jargon, syntactic rhythm and punctuation habits &mdash; the involuntary tells.</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
+ border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
+<div style='display:flex; align-items:baseline; gap:10px;'>
+<i class='fa-solid fa-face-laugh-wink' style='color:#ffd700;'></i>
+<b style='color:#ffd700; font-size:1.05rem;'>Benign Violation</b>
+<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>McGraw</span></div>
+<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Funny is a violation that stays benign. That is what the humour slider actually sets.</div></div>""", unsafe_allow_html=True)
+
+    # ---- Get the CLI ---------------------------------------------------
+    with st.expander("Prefer the terminal? Get the CLI", expanded=False):
+        st.markdown(
+            "The command line version does everything this page does, plus it can read "
+            "writing straight out of a git repo &mdash; commit messages, README, docstrings."
+        )
+        st.code(
+            "pip install https://gretchenboria-pixieduster.static.hf.space/pixieduster-0.1.0-py3-none-any.whl\n"
+            "\n"
+            "pixieduster clone -d \"a friendly desktop robot with great humor\"\n"
+            "pixieduster clone --from ./my-essays\n"
+            "pixieduster clone --repo .",
+            language="bash",
+        )
+        st.markdown(
+            "<a href='pixieduster-0.1.0-py3-none-any.whl' download "
+            "style='color:#ffd700; font-weight:600;'>"
+            "<i class='fa-solid fa-download'></i> Download the wheel directly</a>"
+            " &nbsp;&middot;&nbsp; "
+            "<a href='https://github.com/gretchenboria/PixieDuster' "
+            "style='color:#ffd700; font-weight:600;'>"
+            "<i class='fa-brands fa-github'></i> Source on GitHub</a>",
+            unsafe_allow_html=True,
+        )
+
+    st.write("---")
     
     # Clean, linear layout instead of erratic columns
     st.markdown("### 1. Identify the Persona")
@@ -258,19 +416,16 @@ if st.session_state.step == 1:
                     st.session_state.uploaded_genai_files = uploaded_files
                     
                     st.markdown("<i class='fa-solid fa-list-check fa-flip' style='color:#ffd700;'></i> Formulating profiling questions...", unsafe_allow_html=True)
-                    prompt_instruction = QUESTIONS_INSTRUCTION.format(
-                        target_name=target_name, n=3
+                    prompt_instruction = (
+                        f"Analyze the provided writing samples belonging to '{target_name}'. "
+                        "Formulate 3 highly specific multiple-choice questions to ask the author to uncover deep personality quirks, cognitive styles, or stylistic choices that aren't perfectly obvious from the text alone. "
+                        "Output the result STRICTLY as valid JSON with the following schema: "
+                        '{"questions": [{"question": "...", "options": ["...", "..."]}]}'
                     )
 
                     time.sleep(0.1) # Force UI to render before blocking network request
                     
-                    response_text = call_gemini(
-                        api_key,
-                        model_id,
-                        prompt_instruction,
-                        files=_as_file_tuples(uploaded_files),
-                        schema=QUESTION_SCHEMA,
-                    )
+                    response_text = call_gemini(api_key, model_id, prompt_instruction, uploaded_files, require_json=True)
                     clean_text = response_text.strip()
                     if clean_text.startswith("```json"): clean_text = clean_text[7:]
                     elif clean_text.startswith("```"): clean_text = clean_text[3:]
@@ -338,9 +493,18 @@ elif st.session_state.step == 2:
                             f"Here are the original writing samples for '{st.session_state.target_name}'. "
                             f"I also asked the user some multiple choice questions to refine the persona.\n"
                             f"Here are their answers:\n{user_answers_formatted}\n\n"
-                            + HUMOR_INSTRUCTION.format(humor_level=humor_level)
-                            + "\n\n"
-                            + PERSONA_RUBRIC
+                            f"HUMOR INSTRUCTION: The user has set the humor level to {humor_level} out of 10. "
+                            "Based on Peter McGraw's Benign Violation Theory, formulate rules for this persona's humor. "
+                            "Humor happens when a situation is a violation, the situation is benign, and both occur simultaneously. "
+                            "Ensure the persona's pacing, wit, and conversational style reflect this specific level of humor, completely avoiding plain malignant jabs or asynchronous benign jokes.\n\n"
+                            "PSYCHOLOGICAL & EMPIRICAL PROFILING RUBRIC:\n"
+                            "You must evaluate the text and answers strictly using the following empirical rubrics:\n"
+                            "1. LIWC Lexical/Syntactic Fingerprint: Analyze Pronoun Orientation (1st person singular vs plural vs 2nd/3rd), Affective Processes (Positive vs Negative Emotion clusters), Cognitive Processes (Insight, Causation, Tentativeness vs Certainty), and Temporal Orientation (Past/Present/Future).\n"
+                            "2. The Big Five (OCEAN): Map linguistic data to Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism based on lexical richness, structure, social words, hedging, and self-doubt.\n"
+                            "3. Cognitive Style & Epistemic Stance: Is the author analytical or narrative? Do they rely on empirical citations, personal anecdotes, or axioms? Do they display dialectical thinking or binary/dogmatic thinking?\n"
+                            "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n\n"
+                            "Based on ALL of this, extract their unique terminology standard, recurring thought patterns, sentence structure, and overall persona. "
+                            "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
                         )
                         
                         st.markdown("<i class='fa-solid fa-brain fa-pulse' style='color:#ffd700;'></i> Evaluating Big Five personality traits...", unsafe_allow_html=True)
@@ -353,12 +517,7 @@ elif st.session_state.step == 2:
 
                         time.sleep(0.1) # Force UI to render before blocking network request
                         
-                        extracted_persona = call_gemini(
-                            api_key,
-                            model_id,
-                            final_instruction,
-                            files=_as_file_tuples(st.session_state.uploaded_genai_files),
-                        )
+                        extracted_persona = call_gemini(api_key, model_id, final_instruction, st.session_state.uploaded_genai_files, require_json=False)
                         
                         st.session_state.final_prompt = ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted_persona)
                         

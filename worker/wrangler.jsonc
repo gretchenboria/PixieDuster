@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pixieduster-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-25",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Public URL yes, per-version preview URLs no.
+  "workers_dev": true,
+  "preview_urls": false,
+
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 }
+  },
+
+  // Quota counters. Created with:
+  //   npx wrangler d1 create pixieduster-quota
+  // then paste the returned database_id here.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pixieduster-quota",
+      "database_id": "c625fd4c-d7e7-4fe5-93d2-8d85dec39ef7"
+    }
+  ],
+
+  // Short-lived cache of verified Hugging Face identities. Created with:
+  //   npx wrangler kv namespace create QUOTA_KV
+
+  // Short-lived cache of verified identities. Created with:
+  //   npx wrangler kv namespace create QUOTA_KV
+  "kv_namespaces": [
+    { "binding": "QUOTA_KV", "id": "757150f796d441e7ac01b3e42f1dc9a2" }
+  ],
+
+  // Non-secret knobs. GEMINI_API_KEY is a secret, set with:
+  //   npx wrangler secret put GEMINI_API_KEY
+  // Declared so `wrangler types` knows about it. The value is never here --
+  // set it with:  npx wrangler secret put GEMINI_API_KEY
+  "secrets": { "required": ["GEMINI_API_KEY", "TURNSTILE_SECRET", "IP_SALT"] },
+
+  "vars": {
+    "DAILY_PER_USER": "5",
+    "DAILY_PER_ANON": "2",
+    "ALLOWED_ORIGINS": "https://gretchenboria-pixieduster.static.hf.space,https://huggingface.co",
+    "DAILY_GLOBAL": "400",
+    "MAX_BODY_BYTES": "6291456",
+    "ALLOWED_MODELS": "gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite"
+  }
+}

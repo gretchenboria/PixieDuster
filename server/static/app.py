@@ -7,15 +7,6 @@ from dotenv import load_dotenv
 import time
 import base64
 
-from pixieduster.core import call_gemini, chat_gemini
-from pixieduster.prompts import (
-    ANTI_AI_PROMPT_TEMPLATE,
-    HUMOR_INSTRUCTION,
-    PERSONA_RUBRIC,
-    QUESTION_SCHEMA,
-    QUESTIONS_INSTRUCTION,
-)
-
 st.set_page_config(page_title="PixieDuster", layout="centered", page_icon="logo.png")
 
 # Load environment variables (for local development)
@@ -39,12 +30,67 @@ api_key = st.session_state.api_key
 
 model_id = 'gemini-3.6-flash'
 
-def _as_file_tuples(uploaded_files):
-    """Adapt Streamlit UploadedFile objects to core's (name, mimetype, bytes)."""
-    return [
-        (f.name, f.type or "application/octet-stream", f.getvalue())
-        for f in (uploaded_files or [])
-    ]
+def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    parts = [{"text": prompt}]
+    for file in uploaded_files:
+        mime_type = file.type
+        if mime_type.startswith("text/") or mime_type in ["application/json", "text/markdown", "text/csv"]:
+            text_data = file.getvalue().decode("utf-8", errors="replace")
+            parts.append({"text": f"\n\n--- Document: {file.name} ---\n{text_data}\n--- End Document ---\n"})
+        else:
+            b64_data = base64.b64encode(file.getvalue()).decode("utf-8")
+            parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
+    payload = {"contents": [{"parts": parts}]}
+    if require_json:
+        payload["generationConfig"] = {
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "question": {"type": "STRING"},
+                        "options": {
+                            "type": "ARRAY",
+                            "items": {"type": "STRING"}
+                        }
+                    },
+                    "required": ["question", "options"]
+                }
+            }
+        }
+    response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload)
+    response.raise_for_status()
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+def chat_gemini(api_key, model, sys_prompt, history, user_input):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    contents = []
+    for msg in history:
+        r = "user" if msg["role"] == "user" else "model"
+        contents.append({"role": r, "parts": [{"text": msg["content"]}]})
+    contents.append({"role": "user", "parts": [{"text": user_input}]})
+    payload = {
+        "systemInstruction": {"parts": [{"text": sys_prompt}]},
+        "contents": contents
+    }
+    response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload)
+    response.raise_for_status()
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+
+ANTI_AI_PROMPT_TEMPLATE = """# AI Persona & Style Guide
+
+## Core Directives
+1. **Human Authenticity:** Write with natural imperfections, active voice, and varied pacing. Never sound like a corporate robot or an over-enthusiastic AI.
+2. **Strict Vocabulary Bans:** Completely avoid AI "tells" (e.g., "delve," "tapestry," "crucial," "realm," "testament to," "in conclusion," "additionally").
+3. **Format Naturally:** Use paragraphs and natural transitions. Do not overuse bullet points, bolding, or symmetrical sentence structures. Do not summarize at the end.
+4. **Tone:** Speak directly and conversationally without hedging, generic positivity, or forced calls to action.
+
+## Author Persona & Terminology Standards
+{extracted_persona}
+"""
 
 
 # Improved CSS for better contrast and layout
@@ -258,19 +304,16 @@ if st.session_state.step == 1:
                     st.session_state.uploaded_genai_files = uploaded_files
                     
                     st.markdown("<i class='fa-solid fa-list-check fa-flip' style='color:#ffd700;'></i> Formulating profiling questions...", unsafe_allow_html=True)
-                    prompt_instruction = QUESTIONS_INSTRUCTION.format(
-                        target_name=target_name, n=3
+                    prompt_instruction = (
+                        f"Analyze the provided writing samples belonging to '{target_name}'. "
+                        "Formulate 3 highly specific multiple-choice questions to ask the author to uncover deep personality quirks, cognitive styles, or stylistic choices that aren't perfectly obvious from the text alone. "
+                        "Output the result STRICTLY as valid JSON with the following schema: "
+                        '{"questions": [{"question": "...", "options": ["...", "..."]}]}'
                     )
 
                     time.sleep(0.1) # Force UI to render before blocking network request
                     
-                    response_text = call_gemini(
-                        api_key,
-                        model_id,
-                        prompt_instruction,
-                        files=_as_file_tuples(uploaded_files),
-                        schema=QUESTION_SCHEMA,
-                    )
+                    response_text = call_gemini(api_key, model_id, prompt_instruction, uploaded_files, require_json=True)
                     clean_text = response_text.strip()
                     if clean_text.startswith("```json"): clean_text = clean_text[7:]
                     elif clean_text.startswith("```"): clean_text = clean_text[3:]
@@ -338,9 +381,18 @@ elif st.session_state.step == 2:
                             f"Here are the original writing samples for '{st.session_state.target_name}'. "
                             f"I also asked the user some multiple choice questions to refine the persona.\n"
                             f"Here are their answers:\n{user_answers_formatted}\n\n"
-                            + HUMOR_INSTRUCTION.format(humor_level=humor_level)
-                            + "\n\n"
-                            + PERSONA_RUBRIC
+                            f"HUMOR INSTRUCTION: The user has set the humor level to {humor_level} out of 10. "
+                            "Based on Peter McGraw's Benign Violation Theory, formulate rules for this persona's humor. "
+                            "Humor happens when a situation is a violation, the situation is benign, and both occur simultaneously. "
+                            "Ensure the persona's pacing, wit, and conversational style reflect this specific level of humor, completely avoiding plain malignant jabs or asynchronous benign jokes.\n\n"
+                            "PSYCHOLOGICAL & EMPIRICAL PROFILING RUBRIC:\n"
+                            "You must evaluate the text and answers strictly using the following empirical rubrics:\n"
+                            "1. LIWC Lexical/Syntactic Fingerprint: Analyze Pronoun Orientation (1st person singular vs plural vs 2nd/3rd), Affective Processes (Positive vs Negative Emotion clusters), Cognitive Processes (Insight, Causation, Tentativeness vs Certainty), and Temporal Orientation (Past/Present/Future).\n"
+                            "2. The Big Five (OCEAN): Map linguistic data to Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism based on lexical richness, structure, social words, hedging, and self-doubt.\n"
+                            "3. Cognitive Style & Epistemic Stance: Is the author analytical or narrative? Do they rely on empirical citations, personal anecdotes, or axioms? Do they display dialectical thinking or binary/dogmatic thinking?\n"
+                            "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n\n"
+                            "Based on ALL of this, extract their unique terminology standard, recurring thought patterns, sentence structure, and overall persona. "
+                            "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
                         )
                         
                         st.markdown("<i class='fa-solid fa-brain fa-pulse' style='color:#ffd700;'></i> Evaluating Big Five personality traits...", unsafe_allow_html=True)
@@ -353,12 +405,7 @@ elif st.session_state.step == 2:
 
                         time.sleep(0.1) # Force UI to render before blocking network request
                         
-                        extracted_persona = call_gemini(
-                            api_key,
-                            model_id,
-                            final_instruction,
-                            files=_as_file_tuples(st.session_state.uploaded_genai_files),
-                        )
+                        extracted_persona = call_gemini(api_key, model_id, final_instruction, st.session_state.uploaded_genai_files, require_json=False)
                         
                         st.session_state.final_prompt = ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted_persona)
                         
