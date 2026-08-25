@@ -288,70 +288,6 @@ if st.session_state.step == 1:
 
     st.write("---")
 
-    # ---- How it works -------------------------------------------------
-    st.markdown("<h3 style='text-align:center;'>How it works</h3>", unsafe_allow_html=True)
-    st.markdown(
-        """<div style='display:flex; gap:8px; align-items:stretch; justify-content:center;
- flex-wrap:wrap; margin:18px 0 26px;'><div style='flex:1; min-width:120px; text-align:center;'>
-<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
- font-weight:700; line-height:34px; margin:0 auto 8px;'>1</div>
-<b style='color:#e2d1f9; font-size:0.9rem;'>Evidence</b>
-<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>your writing, or a description</div></div>
-<div style='color:#daa520; font-size:1.3rem; align-self:center;'>&rarr;</div><div style='flex:1; min-width:120px; text-align:center;'>
-<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
- font-weight:700; line-height:34px; margin:0 auto 8px;'>2</div>
-<b style='color:#e2d1f9; font-size:0.9rem;'>Questions</b>
-<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>three, answered by you</div></div>
-<div style='color:#daa520; font-size:1.3rem; align-self:center;'>&rarr;</div><div style='flex:1; min-width:120px; text-align:center;'>
-<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
- font-weight:700; line-height:34px; margin:0 auto 8px;'>3</div>
-<b style='color:#e2d1f9; font-size:0.9rem;'>Analysis</b>
-<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>four rubrics + humour</div></div>
-<div style='color:#daa520; font-size:1.3rem; align-self:center;'>&rarr;</div><div style='flex:1; min-width:120px; text-align:center;'>
-<div style='width:34px; height:34px; border-radius:50%; background:#ffd700; color:#0f081c;
- font-weight:700; line-height:34px; margin:0 auto 8px;'>4</div>
-<b style='color:#e2d1f9; font-size:0.9rem;'>Your prompt</b>
-<div style='color:#8a7da3; font-size:0.78rem; margin-top:3px;'>paste into any AI</div></div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<p style='text-align:center; color:#d1c4e9;'>The analysis is not vibes. Your writing is "
-        "measured against four empirical rubrics and one theory of humour:</p>",
-        unsafe_allow_html=True,
-    )
-    st.markdown("""<div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
- border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
-<div style='display:flex; align-items:baseline; gap:10px;'>
-<i class='fa-solid fa-comment-dots' style='color:#ffd700;'></i>
-<b style='color:#ffd700; font-size:1.05rem;'>LIWC</b>
-<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>Pennebaker</span></div>
-<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Function words, not topic words. Pronoun orientation, certainty vs hedging, and where in time the writing sits.</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
- border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
-<div style='display:flex; align-items:baseline; gap:10px;'>
-<i class='fa-solid fa-brain' style='color:#ffd700;'></i>
-<b style='color:#ffd700; font-size:1.05rem;'>The Big Five</b>
-<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>OCEAN</span></div>
-<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Openness, Conscientiousness, Extraversion, Agreeableness and Neuroticism, read off the lexical evidence.</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
- border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
-<div style='display:flex; align-items:baseline; gap:10px;'>
-<i class='fa-solid fa-puzzle-piece' style='color:#ffd700;'></i>
-<b style='color:#ffd700; font-size:1.05rem;'>Cognitive style</b>
-<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>Epistemic stance</span></div>
-<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Analytical or narrative? Reasoning from evidence, from anecdote, or from conviction?</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
- border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
-<div style='display:flex; align-items:baseline; gap:10px;'>
-<i class='fa-solid fa-wave-square' style='color:#ffd700;'></i>
-<b style='color:#ffd700; font-size:1.05rem;'>Sociolinguistics</b>
-<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>The mechanics</span></div>
-<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Register, jargon, syntactic rhythm and punctuation habits &mdash; the involuntary tells.</div></div><div style='background:rgba(255,255,255,0.04); border-left:3px solid #daa520;
- border-radius:10px; padding:14px 16px; margin-bottom:10px;'>
-<div style='display:flex; align-items:baseline; gap:10px;'>
-<i class='fa-solid fa-face-laugh-wink' style='color:#ffd700;'></i>
-<b style='color:#ffd700; font-size:1.05rem;'>Benign Violation</b>
-<span style='color:#8a7da3; font-size:0.8rem; letter-spacing:1px;'>McGraw</span></div>
-<div style='color:#d1c4e9; font-size:0.92rem; margin-top:6px; line-height:1.5;'>Funny is a violation that stays benign. That is what the humour slider actually sets.</div></div>""", unsafe_allow_html=True)
-
     # ---- Get the CLI ---------------------------------------------------
     with st.expander("Prefer the terminal? Get the CLI", expanded=False):
         st.markdown(
@@ -376,6 +312,25 @@ if st.session_state.step == 1:
             "<i class='fa-brands fa-github'></i> Source on GitHub</a>",
             unsafe_allow_html=True,
         )
+
+
+    # ---- How it works -------------------------------------------------
+    st.markdown("<h3 style='text-align:center;'>How it works</h3>", unsafe_allow_html=True)
+    st.markdown(
+        "<p style='text-align:center; color:#d1c4e9;'>Your writing goes in as one thing. It comes "
+        "out measured against four empirical rubrics and a theory of humour, written up as "
+        "one file you can paste into any AI.</p>",
+        unsafe_allow_html=True,
+    )
+    # Served by the Space alongside this file. An <img> avoids st.image's
+    # patchy SVG handling and stlite's file-mounting entirely.
+    st.markdown(
+        "<div style='margin:6px 0 4px;'>"
+        "<img src='./PixieDuster-Flow.svg' alt='How PixieDuster works' "
+        "style='width:100%; border-radius:14px; border:1px solid rgba(218,165,32,0.35);'>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     st.write("---")
     

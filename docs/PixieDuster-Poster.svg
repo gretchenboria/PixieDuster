@@ -296,24 +296,30 @@
 <rect x="70" y="404" width="5" height="34" fill="#ffd700"/>
 <text x="92" y="430" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="17" fill="#ffd700" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >01</text>
 <text x="126" y="430" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27" fill="#e2d1f9" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >How it works</text>
-<rect x="80" y="500" width="300" height="132" rx="18" fill="#1d1233" stroke="#ff9ecb" stroke-width="1.6" opacity="1.0"/>
-<rect x="80" y="500" width="6" height="132" rx="3" fill="#ff9ecb"/>
-<text x="108" y="542" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21" fill="#ff9ecb" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Invent a character</text>
-<text x="108" y="574" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="16" fill="#ffd700" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >--describe</text>
-<text x="108" y="604" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >a friendly desktop robot</text>
-<path d="M 384 566 C 480 566, 500 790, 544 790" fill="none" stroke="#ff9ecb" stroke-width="2.6" opacity="0.55"/>
-<rect x="80" y="678" width="300" height="132" rx="18" fill="#1d1233" stroke="#89b4fa" stroke-width="1.6" opacity="1.0"/>
-<rect x="80" y="678" width="6" height="132" rx="3" fill="#89b4fa"/>
-<text x="108" y="720" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21" fill="#89b4fa" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Your own writing</text>
-<text x="108" y="752" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="16" fill="#ffd700" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >--from</text>
-<text x="108" y="782" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >essays, PDFs, screenshots</text>
-<path d="M 384 744 C 480 744, 500 790, 544 790" fill="none" stroke="#89b4fa" stroke-width="2.6" opacity="0.55"/>
-<rect x="80" y="856" width="300" height="132" rx="18" fill="#1d1233" stroke="#7ed9a0" stroke-width="1.6" opacity="1.0"/>
-<rect x="80" y="856" width="6" height="132" rx="3" fill="#7ed9a0"/>
-<text x="108" y="898" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21" fill="#7ed9a0" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >A git repo</text>
-<text x="108" y="930" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="16" fill="#ffd700" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >--repo</text>
-<text x="108" y="960" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >commits, README, docstrings</text>
-<path d="M 384 922 C 480 922, 500 790, 544 790" fill="none" stroke="#7ed9a0" stroke-width="2.6" opacity="0.55"/>
+<rect x="80" y="500" width="300" height="146" rx="18" fill="#1d1233" stroke="#ff9ecb" stroke-width="1.6" opacity="1.0"/>
+<rect x="80" y="500" width="6" height="146" rx="3" fill="#ff9ecb"/>
+<text x="108" y="538" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#ff9ecb" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Invent a character</text>
+<text x="108" y="564" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e2d1f9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >in the app:  type a description</text>
+<text x="108" y="588" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e2d1f9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >in the CLI:</text>
+<text x="180" y="588" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="13.5" fill="#ffd700" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >--describe</text>
+<text x="108" y="616" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >a friendly desktop robot</text>
+<path d="M 384 573 C 480 573, 500 790, 544 790" fill="none" stroke="#ff9ecb" stroke-width="2.6" opacity="0.55"/>
+<rect x="80" y="678" width="300" height="146" rx="18" fill="#1d1233" stroke="#89b4fa" stroke-width="1.6" opacity="1.0"/>
+<rect x="80" y="678" width="6" height="146" rx="3" fill="#89b4fa"/>
+<text x="108" y="716" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#89b4fa" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >Your own writing</text>
+<text x="108" y="742" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e2d1f9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >in the app:  upload files</text>
+<text x="108" y="766" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e2d1f9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >in the CLI:</text>
+<text x="180" y="766" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="13.5" fill="#ffd700" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >--from</text>
+<text x="108" y="794" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >notes, screenshots, photos, emails</text>
+<path d="M 384 751 C 480 751, 500 790, 544 790" fill="none" stroke="#89b4fa" stroke-width="2.6" opacity="0.55"/>
+<rect x="80" y="856" width="300" height="146" rx="18" fill="#1d1233" stroke="#7ed9a0" stroke-width="1.6" opacity="1.0"/>
+<rect x="80" y="856" width="6" height="146" rx="3" fill="#7ed9a0"/>
+<text x="108" y="894" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#7ed9a0" font-weight="bold" text-anchor="start" letter-spacing="0" opacity="1.0" >A git repo</text>
+<text x="108" y="920" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e2d1f9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >in the app:  CLI only</text>
+<text x="108" y="944" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e2d1f9" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >in the CLI:</text>
+<text x="180" y="944" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="13.5" fill="#ffd700" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >--repo</text>
+<text x="108" y="972" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#8a7da3" font-weight="normal" text-anchor="start" letter-spacing="0" opacity="1.0" >commits, README, docstrings</text>
+<path d="M 384 929 C 480 929, 500 790, 544 790" fill="none" stroke="#7ed9a0" stroke-width="2.6" opacity="0.55"/>
 <rect x="544" y="781" width="96" height="18" fill="url(#beamin)"/>
 <path d="M 640 658 L 758 922 L 522 922 Z" fill="url(#prism)" stroke="#ffd700" stroke-width="2.4" stroke-linejoin="round" filter="url(#soft)"/>
 <text x="640" y="856" font-family="Menlo, DejaVu Sans Mono, monospace" font-size="15" fill="#ffd700" font-weight="bold" text-anchor="middle" letter-spacing="2" opacity="1.0" >GEMINI</text>

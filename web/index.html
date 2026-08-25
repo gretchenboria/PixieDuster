@@ -11,17 +11,25 @@
     <!-- Turnstile: proves the visitor is a person, so the hosted key can be
          used without anyone typing a key of their own. The sitekey is public
          by design; the matching secret lives only on the Worker. -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
     <style>
+      html, body { margin: 0; background: #0f081c; }
+      /* Normal flow, pinned to the top. `position: fixed` centred this in the
+         middle of Hugging Face's very tall iframe, which put it below the fold. */
       #pd-gate {
-        position: fixed; inset: 0; z-index: 9999;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 18px; background: radial-gradient(circle at top, #2b1845, #0f081c);
+        display: flex; flex-direction: column; align-items: center;
+        gap: 16px; padding: 56px 20px 72px;
+        background: radial-gradient(circle at top, #2b1845, #0f081c);
         color: #e2d1f9; font-family: Inter, system-ui, sans-serif; text-align: center;
+        min-height: 60vh; box-sizing: border-box;
       }
-      #pd-gate h1 { color: #ffd700; font-size: 1.4rem; margin: 0; }
-      #pd-gate p  { color: #d1c4e9; max-width: 30rem; margin: 0 1rem; font-size: .95rem; }
+      #pd-gate img { width: 96px; filter: drop-shadow(0 0 14px rgba(255,215,0,.35)); }
+      #pd-gate h1 { color: #ffd700; font-size: 1.6rem; margin: 0; letter-spacing: .5px; }
+      #pd-gate p  { color: #d1c4e9; max-width: 32rem; margin: 0; font-size: .95rem; line-height: 1.5; }
+      #pd-turnstile { min-height: 65px; }
       #pd-gate.done { display: none; }
+      #root { display: none; }
+      #root.ready { display: block; }
     </style>
 
     <!-- Stlite CSS -->
@@ -32,6 +40,7 @@
   </head>
   <body>
     <div id="pd-gate">
+      <img src="./logo.png" alt="">
       <h1>PixieDuster</h1>
       <p>One quick check that you are a person, then you are in. No sign-up,
          no API key, nothing to install.</p>
@@ -49,7 +58,9 @@
       window.pdSession = "";
 
       function pdReady() {
+        document.getElementById("pd-status").textContent = "";
         document.getElementById("pd-gate").classList.add("done");
+        document.getElementById("root").classList.add("ready");
       }
 
       async function pdVerified(token) {
@@ -70,8 +81,19 @@
         }
       }
 
+      // If the challenge never resolves, say so rather than sitting on
+      // "Loading..." forever -- and offer the way out that always works.
+      function pdStall() {
+        if (window.pdSession) return;
+        document.getElementById("pd-status").innerHTML =
+          'Still waiting on the human check. Try reloading, or ' +
+          '<a href="https://github.com/gretchenboria/PixieDuster" style="color:#ffd700;">' +
+          'use the command line version</a>.';
+      }
+
       window.onloadTurnstileCallback = function () {
         document.getElementById("pd-status").textContent = "";
+        setTimeout(pdStall, 12000);
         turnstile.render("#pd-turnstile", {
           sitekey: "0x4AAAAAAEb4atlzbWGoBrFJ",
           theme: "dark",
@@ -82,12 +104,6 @@
           },
         });
       };
-      // api.js may already have loaded by the time this runs.
-      if (window.turnstile) window.onloadTurnstileCallback();
-      else document.addEventListener("DOMContentLoaded", function () {
-        if (window.turnstile) window.onloadTurnstileCallback();
-      });
-
       stlite.mount(
         {
           requirements: ["requests", "python-dotenv"],

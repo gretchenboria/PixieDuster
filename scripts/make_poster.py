@@ -168,10 +168,14 @@ def section_label(y, n, title) -> None:
 # the prism
 # ---------------------------------------------------------------------------
 
+# (title, what you do in the browser, the equivalent CLI flag, colour, examples)
 INPUTS = [
-    ("Invent a character", "--describe", ROSE, "a friendly desktop robot"),
-    ("Your own writing", "--from", BLUE, "essays, PDFs, screenshots"),
-    ("A git repo", "--repo", GREEN, "commits, README, docstrings"),
+    ("Invent a character", "type a description", "--describe", ROSE,
+     "a friendly desktop robot"),
+    ("Your own writing", "upload files", "--from", BLUE,
+     "notes, screenshots, photos, emails"),
+    ("A git repo", "CLI only", "--repo", GREEN,
+     "commits, README, docstrings"),
 ]
 
 CRITERIA = [
@@ -250,6 +254,43 @@ def humor_chart(cx, cy) -> None:
     text(cx + 42, cy + 42, "benign", size=10, fill=FAINT, anchor="middle")
 
 
+def flow_output(y: float) -> None:
+    """What comes out the other side. Without this the picture stops halfway."""
+    add(f'<path d="M {W/2} {y-34} L {W/2} {y-10}" stroke="{GOLD}" stroke-width="3"/>')
+    add(f'<path d="M {W/2-6} {y-14} L {W/2+6} {y-14} L {W/2} {y-4} Z" fill="{GOLD}"/>')
+
+    card(80, y, W - 160, 132, stroke=GOLD, fill="#1a2a20", sw=2.2)
+
+    # the document
+    add(f'<rect x="118" y="{y+22}" width="86" height="88" rx="6" fill="#ffffff" '
+        f'opacity="0.07" stroke="{DIM}" stroke-width="1.2"/>')
+    for k in range(5):
+        add(f'<rect x="132" y="{y+36+k*13}" width="{58 - (k%3)*14}" height="3.6" '
+            f'rx="1.8" fill="{LILAC}" opacity="0.6"/>')
+    add(f'<circle cx="206" cy="{y+98}" r="15" fill="{GOLD}" opacity="0.95"/>')
+    text(206, y + 103, "PD", size=11, fill="#3a2400", weight="bold",
+         anchor="middle", family=MONO)
+
+    text(240, y + 44, "persona.md", size=25, fill=GOLD, family=MONO)
+    text(240, y + 72, "One file: how this identity talks, what it finds funny,",
+         size=14, fill=MAUVE)
+    text(240, y + 94, "the words it would never use. Paste it into any AI as a",
+         size=14, fill=MAUVE)
+    text(240, y + 116, "system prompt and it becomes that identity.", size=14, fill=MAUVE)
+
+    for i, chip in enumerate(["a chatbot", "a game character", "Claude Code", "Cursor"]):
+        cw2 = 15 + len(chip) * 8.2
+        cx = W - 100 - cw2 - i * 0  # laid out right to left below
+        add("")
+    x = W - 96
+    for chip in reversed(["a chatbot", "a game character", "Claude Code", "Cursor"]):
+        cw2 = 16 + len(chip) * 8.2
+        x -= cw2 + 10
+        add(f'<rect x="{x:.0f}" y="{y+96}" width="{cw2:.0f}" height="26" rx="13" '
+            f'fill="#ffffff" opacity="0.07" stroke="{DIM}" stroke-width="0.8"/>')
+        text(x + cw2 / 2, y + 113, chip, size=11.5, fill=MAUVE, anchor="middle")
+
+
 def flow() -> None:
     section_label(430, "01", "How it works")
 
@@ -257,16 +298,18 @@ def flow() -> None:
     ph = 132                     # prism half-height
 
     # --- input cards ---------------------------------------------------
-    for i, (label, flag, colour, detail) in enumerate(INPUTS):
+    for i, (label, web, flag, colour, detail) in enumerate(INPUTS):
         y = 500 + i * 178
-        card(80, y, 300, 132, stroke=colour)
-        add(f'<rect x="80" y="{y}" width="6" height="132" rx="3" fill="{colour}"/>')
-        text(108, y + 42, label, size=21, fill=colour, weight="bold")
-        text(108, y + 74, flag, size=16, fill=GOLD, family=MONO)
-        text(108, y + 104, detail, size=13.5, fill=FAINT)
+        card(80, y, 300, 146, stroke=colour)
+        add(f'<rect x="80" y="{y}" width="6" height="146" rx="3" fill="{colour}"/>')
+        text(108, y + 38, label, size=20, fill=colour, weight="bold")
+        text(108, y + 64, f"in the app:  {web}", size=12.5, fill=LILAC)
+        text(108, y + 88, "in the CLI:", size=12.5, fill=LILAC)
+        text(180, y + 88, flag, size=13.5, fill=GOLD, family=MONO)
+        text(108, y + 116, detail, size=12, fill=FAINT)
 
         # curved beam into the prism
-        sy = y + 66
+        sy = y + 73
         add(
             f'<path d="M 384 {sy} C 480 {sy}, 500 {py}, {px-96} {py}" fill="none" '
             f'stroke="{colour}" stroke-width="2.6" opacity="0.55"/>'
@@ -418,6 +461,34 @@ def stack() -> None:
          family=MONO, style='filter="url(#soft)"')
 
 
+def build_flow() -> tuple[Path, Path]:
+    """Just the prism, as a standalone graphic for the web page.
+
+    Same drawing code, cropped with a viewBox so it stays one source of truth.
+    """
+    out.clear()
+    TOP, BOT = 444, 1500   # below the numbered label, past the output band
+    add(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{BOT-TOP}" '
+        f'viewBox="0 {TOP} {W} {BOT-TOP}">')
+    defs()
+    background()
+    flow()
+    flow_output(1346)
+    add("</svg>")
+
+    # SVG blur filters make browsers re-rasterise on every zoom step, which
+    # reads as flicker. The standalone graphic is viewed and zoomed, so it does
+    # without them; the print poster keeps them.
+    body = "\n".join(out).replace(' filter="url(#soft)"', "").replace(' style=\'filter="url(#glow)"\'', "")
+
+    DOCS.mkdir(parents=True, exist_ok=True)
+    svg = DOCS / "PixieDuster-Flow.svg"
+    svg.write_text(body, encoding="utf-8")
+    png = DOCS / "PixieDuster-Flow.png"
+    subprocess.run(["rsvg-convert", "-w", str(W * 2), "-o", str(png), str(svg)], check=True)
+    return svg, png
+
+
 def build() -> Path:
     add(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
         f'viewBox="0 0 {W} {H}">')
@@ -442,5 +513,5 @@ def build() -> Path:
 
 
 if __name__ == "__main__":
-    p = build()
-    print(f"wrote {p}  ({p.stat().st_size:,} bytes)")
+    for path in (build(), *build_flow()):
+        print(f"wrote {path}  ({path.stat().st_size:,} bytes)")

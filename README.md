@@ -6,7 +6,7 @@ becomes a full specification of a voice — which an AI then writes in.
 [**Try it in the browser**](https://huggingface.co/spaces/gretchenboria/PixieDuster) ·
 no sign-up, no API key, nothing to install.
 
-![How PixieDuster works](docs/PixieDuster-Poster.png)
+![How PixieDuster works](docs/PixieDuster-Flow.png)
 
 ## What it actually does
 
@@ -72,6 +72,10 @@ The hosted service runs on one shared key with hard limits: 5 personas a day per
 Hugging Face account, 2 for anonymous browser visitors, under a global daily
 ceiling. Past that, bring your own key with `--api-key`, or set one once with
 `pixieduster config set-key`.
+
+## The whole thing on one page
+
+![PixieDuster poster](docs/PixieDuster-Poster.png)
 
 ## Layout
 
