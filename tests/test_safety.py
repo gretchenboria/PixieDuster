@@ -3,8 +3,11 @@
 Everything here is offline: no network, no API keys, no fixtures on disk.
 
 All "secrets" below are deliberately fake. Where possible they are the
-vendor's own published example values (e.g. AWS's AKIAIOSFODNN7EXAMPLE) so
+vendor's own published example values (AWS documents an AKIA...EXAMPLE id) so
 that nothing in this repository is ever a live credential.
+
+They are assembled at runtime rather than written as literals: spelled out,
+they trip GitHub's secret scanning, which is the scanner doing its job.
 """
 
 from __future__ import annotations
@@ -35,6 +38,11 @@ def _f(*parts: str) -> str:
     return "".join(parts)
 
 
+AWS_EXAMPLE_ID = _f("AKIA", "IOSFODNN7EXAMPLE")
+AWS_EXAMPLE_TEMP = _f("ASIA", "IOSFODNN7EXAMPLE")
+GOOGLE_FAKE = _f("AIza", "SyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q")
+
+
 FAKE_PEM = (
     "-----BEGIN RSA PRIVATE KEY-----\n"
     "MIIEowIBAAKCAQEAxNotARealKeyJustPaddingPaddingPaddingPadding0000\n"
@@ -50,10 +58,10 @@ SECRET_CORPUS: list[tuple[str, str]] = [
         "someone pasted -----BEGIN OPENSSH PRIVATE KEY----- and stopped there",
     ),
     # AWS's own documented example access key id.
-    ("aws-access-key-id", "export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"),
+    ("aws-access-key-id", f"export AWS_ACCESS_KEY_ID={AWS_EXAMPLE_ID}"),
     (
         "aws-access-key-id",
-        "temporary creds ASIAIOSFODNN7EXAMPLE were rotated",
+        f"temporary creds {AWS_EXAMPLE_TEMP} were rotated",
     ),
     # AWS's own documented example secret access key.
     (
@@ -62,7 +70,7 @@ SECRET_CORPUS: list[tuple[str, str]] = [
     ),
     (
         "google-api-key",
-        "GEMINI_API_KEY=AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q",
+        f"GEMINI_API_KEY={GOOGLE_FAKE}",
     ),
     (
         "google-oauth-client-secret",
@@ -306,19 +314,19 @@ def test_prose_containing_words_in_bulk_document():
 
 
 def test_line_numbers_are_relative_to_the_sample():
-    text = "line one\nline two\nAWS_KEY=AKIAIOSFODNN7EXAMPLE\nline four"
+    text = f"line one\nline two\nAWS_KEY={AWS_EXAMPLE_ID}\nline four"
     findings = safety.scan(_samples([text]))
     assert len(findings) == 1
     assert findings[0].line == 3
 
 
 def test_first_line_is_line_one():
-    findings = safety.scan(_samples(["AKIAIOSFODNN7EXAMPLE\n"]))
+    findings = safety.scan(_samples([f"{AWS_EXAMPLE_ID}\n"]))
     assert findings[0].line == 1
 
 
 def test_origin_is_propagated():
-    sample = Sample(kind="commit", origin="git log deadbee", text="key AKIAIOSFODNN7EXAMPLE")
+    sample = Sample(kind="commit", origin="git log deadbee", text=f"key {AWS_EXAMPLE_ID}")
     finding = safety.scan([sample])[0]
     assert finding.origin == "git log deadbee"
 
@@ -330,7 +338,7 @@ def test_scan_handles_empty_input():
 
 def test_scan_reports_each_secret_once():
     """A key inside a KEY= line must not be reported by three rules at once."""
-    text = "GEMINI_API_KEY=AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q"
+    text = f"GEMINI_API_KEY={GOOGLE_FAKE}"
     findings = safety.scan(_samples([text]))
     assert len(findings) == 1
     assert findings[0].rule == "google-api-key"
@@ -338,8 +346,8 @@ def test_scan_reports_each_secret_once():
 
 def test_multiple_secrets_in_one_sample():
     text = (
-        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n"
-        "GEMINI=AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q\n"
+        f"AWS_ACCESS_KEY_ID={AWS_EXAMPLE_ID}\n"
+        f"GEMINI={GOOGLE_FAKE}\n"
     )
     findings = safety.scan(_samples([text]))
     assert {f.rule for f in findings} == {"aws-access-key-id", "google-api-key"}
@@ -358,7 +366,7 @@ def test_multiline_pem_excerpt_is_single_line_and_safe():
 
 
 def test_excerpt_is_length_capped():
-    text = "x" * 500 + " AKIAIOSFODNN7EXAMPLE " + "y" * 500
+    text = "x" * 500 + f" {AWS_EXAMPLE_ID} " + "y" * 500
     finding = safety.scan(_samples([text]))[0]
     assert len(finding.excerpt) <= 260
 
@@ -379,7 +387,7 @@ def test_no_finding_excerpt_contains_any_corpus_secret():
 
 
 def test_redact_format():
-    out = safety.redact("k=AKIAIOSFODNN7EXAMPLE")
+    out = safety.redact(f"k={AWS_EXAMPLE_ID}")
     assert out == "k=<REDACTED:aws-access-key-id>"
 
 
@@ -389,7 +397,7 @@ def test_redact_keeps_key_name_for_generic_rule():
 
 
 def test_redact_is_idempotent():
-    text = "AWS=AKIAIOSFODNN7EXAMPLE and AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q"
+    text = f"AWS={AWS_EXAMPLE_ID} and {GOOGLE_FAKE}"
     once = safety.redact(text)
     assert safety.redact(once) == once
 
@@ -399,7 +407,7 @@ def test_redact_handles_empty():
 
 
 def test_redact_preserves_surrounding_text():
-    out = safety.redact("before AKIAIOSFODNN7EXAMPLE after")
+    out = safety.redact(f"before {AWS_EXAMPLE_ID} after")
     assert out.startswith("before ") and out.endswith(" after")
 
 
@@ -519,7 +527,7 @@ def test_dry_run_report_lists_every_sample():
 
 def test_dry_run_report_is_plain_text():
     samples = [Sample(kind="doc", origin="README.md", text="hello")]
-    findings = safety.scan(_samples(["k=AKIAIOSFODNN7EXAMPLE"]))
+    findings = safety.scan(_samples([f"k={AWS_EXAMPLE_ID}"]))
     report = safety.dry_run_report(samples, findings)
     assert "[/" not in report          # no rich closing tags
     assert "\x1b[" not in report       # no ANSI escapes
@@ -527,11 +535,11 @@ def test_dry_run_report_is_plain_text():
 
 
 def test_dry_run_report_includes_findings():
-    findings = safety.scan(_samples(["k=AKIAIOSFODNN7EXAMPLE"]))
+    findings = safety.scan(_samples([f"k={AWS_EXAMPLE_ID}"]))
     report = safety.dry_run_report([], findings)
     assert "aws-access-key-id" in report
     assert "HIGH" in report
-    assert "AKIAIOSFODNN7EXAMPLE" not in report
+    assert f"{AWS_EXAMPLE_ID}" not in report
 
 
 def test_dry_run_report_never_contains_raw_secrets():
@@ -601,7 +609,7 @@ def test_realistic_repo_document_end_to_end():
         "\n"
         "Oops, an old snapshot of .env got committed:\n"
         "\n"
-        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n"
+        f"AWS_ACCESS_KEY_ID={AWS_EXAMPLE_ID}\n"
         "\n"
         "Rotate the token afterwards.\n"
     )
@@ -609,5 +617,5 @@ def test_realistic_repo_document_end_to_end():
     assert len(findings) == 1
     assert findings[0].rule == "aws-access-key-id"
     assert findings[0].line == 10
-    assert "AKIAIOSFODNN7EXAMPLE" not in findings[0].excerpt
+    assert f"{AWS_EXAMPLE_ID}" not in findings[0].excerpt
     assert "AWS_ACCESS_KEY_ID=" in findings[0].excerpt

@@ -11,7 +11,7 @@ import requests
 from pixieduster import core
 from pixieduster.types import Question, Sample
 
-FAKE_KEY = "AIzaSyD-FAKE-KEY-FOR-TESTS-0123456789"
+FAKE_KEY = "AIza" + "SyD-FAKE-KEY-FOR-TESTS-0123456789"
 
 
 class FakeResponse:

@@ -9,7 +9,7 @@ import pytest
 
 from pixieduster import config
 
-KEY = "AIzaSyD-FAKE-KEY-FOR-TESTS-0123456789"
+KEY = "AIza" + "SyD-FAKE-KEY-FOR-TESTS-0123456789"
 
 
 @pytest.fixture

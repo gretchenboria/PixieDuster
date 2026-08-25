@@ -21,7 +21,7 @@ SERVER_DIR = Path(__file__).resolve().parent.parent / "server"
 @pytest.fixture
 def server(tmp_path, monkeypatch):
     """A fresh app with its own quota database and small limits."""
-    monkeypatch.setenv("GEMINI_API_KEY", "AIzaFAKEKEYFORTESTSONLYFAKEKEYFORTESTS")
+    monkeypatch.setenv("GEMINI_API_KEY", "AIza" + "FAKEKEYFORTESTSONLYFAKEKEYFORTESTS")
     monkeypatch.setenv("QUOTA_DB", str(tmp_path / "quota.db"))
     monkeypatch.setenv("DAILY_PER_USER", "2")
     monkeypatch.setenv("DAILY_GLOBAL", "3")

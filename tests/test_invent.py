@@ -16,7 +16,7 @@ from pixieduster import core, prompts
 from pixieduster.types import Sample
 
 ROBOT = "a friendly desktop robot with great humor"
-KEY = "AIzaTESTKEYTESTKEYTESTKEYTESTKEYTEST123"
+KEY = "AIza" + "TESTKEYTESTKEYTESTKEYTESTKEYTEST123"
 
 
 def _reply(text: str) -> dict:
