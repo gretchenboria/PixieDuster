@@ -13,7 +13,8 @@ from __future__ import annotations
 import base64
 import json
 import re
-from typing import Any, Iterable, Sequence
+import time
+from typing import Any, Callable, Iterable, Sequence
 
 import requests
 
@@ -30,6 +31,10 @@ from .types import Question, Sample
 __all__ = [
     "API_BASE",
     "DEFAULT_MODEL",
+    "MAX_ATTEMPTS",
+    "RETRY_BASE_DELAY",
+    "RETRY_MAX_DELAY",
+    "RETRY_STATUSES",
     "GeminiError",
     "call_gemini",
     "chat_gemini",
@@ -43,6 +48,27 @@ API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 #: Model used unless overridden by --model or [settings] model.
 DEFAULT_MODEL = "gemini-3.6-flash"
+
+#: Total tries for one request, including the first. 3 means two retries.
+MAX_ATTEMPTS = 3
+
+#: First backoff wait in seconds. Doubles each retry, capped by RETRY_MAX_DELAY.
+RETRY_BASE_DELAY = 1.0
+
+#: Ceiling on a single backoff wait, including a server's own Retry-After.
+RETRY_MAX_DELAY = 20.0
+
+#: HTTP statuses worth trying again. 429 is the hosted proxy's rate limit and
+#: 5xx is the API having a bad minute. 400/401/403 are never retried: the
+#: request is wrong or the credential is, and repeating it wastes the user's
+#: time and quota.
+RETRY_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
+
+#: Optional module-level ``(attempt, delay_seconds, why) -> None`` hook, called
+#: before each backoff wait so a UI can say "rate limited, retrying in 2s".
+#: Set it rather than importing ui here, which would make core depend on a
+#: presentation layer. A per-call ``on_retry=`` argument overrides it.
+RETRY_NOTIFIER: Callable[[int, float, str], None] | None = None
 
 #: Mime types we inline as plain text rather than base64 blobs.
 _TEXT_MIME_EXTRA = {"application/json", "text/markdown", "text/csv"}
@@ -114,26 +140,130 @@ def _error_detail(response: requests.Response) -> str:
     return json.dumps(body)[:500]
 
 
-def _post(url: str, api_key: str, payload: dict[str, Any], timeout: int,
-          base_url: str | None = None) -> dict[str, Any]:
-    """POST JSON and return the parsed body, raising ``GeminiError`` on trouble."""
+#: Transport failures worth trying again. Everything else in the
+#: ``RequestException`` tree (a bad URL, too many redirects, an SSL error) will
+#: fail identically the second time, so it is raised at once.
+_RETRYABLE_EXCEPTIONS = (
+    requests.Timeout,
+    requests.ConnectionError,
+)
+
+
+def _retry_after_seconds(response: object) -> float | None:
+    """Read a ``Retry-After`` header, in seconds. None when absent or unparsable.
+
+    Only the delay-seconds form is honored. The HTTP-date form is rarer here
+    and parsing it wrong would mean sleeping for hours.
+    """
+    headers = getattr(response, "headers", None) or {}
     try:
-        response = requests.post(
-            url, headers=_headers(api_key, base_url), json=payload, timeout=timeout
-        )
-    except requests.RequestException as exc:
-        raise GeminiError(f"Could not reach the Gemini API: {exc}", api_key) from None
-    if response.status_code >= 400:
-        raise GeminiError(
-            f"Gemini API error {response.status_code}: {_error_detail(response)}",
-            api_key,
-        ) from None
+        raw = headers.get("Retry-After") or headers.get("retry-after")
+    except AttributeError:  # pragma: no cover - a non-mapping headers object
+        return None
+    if raw is None:
+        return None
     try:
-        return response.json()
+        value = float(str(raw).strip())
     except ValueError:
-        raise GeminiError(
-            "Gemini API returned a response that was not JSON.", api_key
-        ) from None
+        return None
+    if value < 0:
+        return None
+    return min(value, RETRY_MAX_DELAY)
+
+
+def _backoff_delay(attempt: int, response: object | None = None) -> float:
+    """Seconds to wait before try number ``attempt + 1``.
+
+    Exponential from :data:`RETRY_BASE_DELAY`, capped at
+    :data:`RETRY_MAX_DELAY`, but a server's own ``Retry-After`` wins when it
+    asks for longer.
+    """
+    delay = min(RETRY_BASE_DELAY * (2 ** (attempt - 1)), RETRY_MAX_DELAY)
+    server = _retry_after_seconds(response) if response is not None else None
+    if server is not None:
+        delay = min(max(delay, server), RETRY_MAX_DELAY)
+    return delay
+
+
+def _notify_retry(
+    on_retry: Callable[[int, float, str], None] | None,
+    attempt: int,
+    delay: float,
+    why: str,
+) -> None:
+    """Tell the caller we are about to wait. A broken callback never fails a run."""
+    callback = on_retry or RETRY_NOTIFIER
+    if callback is None:
+        return
+    try:
+        callback(attempt, delay, why)
+    except Exception:  # pragma: no cover - a UI bug must not kill the request
+        pass
+
+
+def _post(url: str, api_key: str, payload: dict[str, Any], timeout: int,
+          base_url: str | None = None, *,
+          attempts: int = MAX_ATTEMPTS,
+          on_retry: Callable[[int, float, str], None] | None = None) -> dict[str, Any]:
+    """POST JSON and return the parsed body, raising ``GeminiError`` on trouble.
+
+    Transient failures - a timeout, a dropped connection, a 429 from the hosted
+    proxy, a 5xx from the API - are retried up to ``attempts`` times with
+    exponential backoff. A 400, 401 or 403 is raised immediately, and so is
+    anything that happens *after* a successful response, so a request that the
+    server already accepted is never sent twice.
+
+    Args:
+        attempts: Total tries including the first. 1 disables retrying.
+        on_retry: ``(attempt, delay_seconds, why) -> None``, called before each
+            wait. Overrides :data:`RETRY_NOTIFIER`.
+    """
+    total = max(1, attempts)
+    for attempt in range(1, total + 1):
+        try:
+            response = requests.post(
+                url, headers=_headers(api_key, base_url), json=payload, timeout=timeout
+            )
+        except _RETRYABLE_EXCEPTIONS as exc:
+            if attempt >= total:
+                raise GeminiError(
+                    f"Could not reach the Gemini API after {total} tries: {exc}", api_key
+                ) from None
+            delay = _backoff_delay(attempt)
+            _notify_retry(on_retry, attempt, delay, "the connection failed")
+            time.sleep(delay)
+            continue
+        except requests.RequestException as exc:
+            raise GeminiError(f"Could not reach the Gemini API: {exc}", api_key) from None
+
+        status = getattr(response, "status_code", 200)
+        if status >= 400:
+            retryable = status in RETRY_STATUSES or status >= 500
+            if retryable and attempt < total:
+                delay = _backoff_delay(attempt, response)
+                why = (
+                    "the daily limit or rate limit was hit"
+                    if status == 429
+                    else f"the server returned {status}"
+                )
+                _notify_retry(on_retry, attempt, delay, why)
+                time.sleep(delay)
+                continue
+            raise GeminiError(
+                f"Gemini API error {status}: {_error_detail(response)}",
+                api_key,
+            ) from None
+
+        # From here the server has accepted and answered the request. Whatever
+        # goes wrong next is not something a second identical POST would fix.
+        try:
+            return response.json()
+        except ValueError:
+            raise GeminiError(
+                "Gemini API returned a response that was not JSON.", api_key
+            ) from None
+
+    raise GeminiError("Could not reach the Gemini API.", api_key)  # pragma: no cover
 
 
 def _extract_text(body: dict[str, Any], api_key: str | None = None) -> str:
@@ -202,6 +332,7 @@ def call_gemini(
     schema: dict | None = None,
     timeout: int = 120,
     base_url: str | None = None,
+    on_retry: Callable[[int, float, str], None] | None = None,
 ) -> str:
     """Single-turn generateContent call.
 
@@ -215,6 +346,10 @@ def call_gemini(
         schema: If given, sets ``responseMimeType=application/json`` and
             ``responseSchema`` so the model must answer in that shape.
         timeout: Per-request timeout in seconds.
+        on_retry: ``(attempt, delay_seconds, why) -> None``, called before each
+            backoff wait so the caller can show the pause. Transient failures
+            (timeout, dropped connection, 429, 5xx) are retried
+            :data:`MAX_ATTEMPTS` times; 400, 401 and 403 never are.
 
     Returns:
         The generated text.
@@ -235,7 +370,10 @@ def call_gemini(
             "responseMimeType": "application/json",
             "responseSchema": schema,
         }
-    body = _post(_endpoint(model, base_url=base_url), api_key, payload, timeout, base_url)
+    body = _post(
+        _endpoint(model, base_url=base_url), api_key, payload, timeout, base_url,
+        on_retry=on_retry,
+    )
     return _extract_text(body, api_key)
 
 
@@ -248,6 +386,7 @@ def chat_gemini(
     *,
     timeout: int = 120,
     base_url: str | None = None,
+    on_retry: Callable[[int, float, str], None] | None = None,
 ) -> str:
     """Multi-turn chat against a persona system prompt.
 
@@ -277,7 +416,10 @@ def chat_gemini(
         "systemInstruction": {"parts": [{"text": sys_prompt}]},
         "contents": contents,
     }
-    body = _post(_endpoint(model, base_url=base_url), api_key, payload, timeout, base_url)
+    body = _post(
+        _endpoint(model, base_url=base_url), api_key, payload, timeout, base_url,
+        on_retry=on_retry,
+    )
     return _extract_text(body, api_key)
 
 
@@ -395,6 +537,7 @@ def generate_questions(
     files: Sequence[tuple[str, str, bytes]] | None = None,
     timeout: int = 120,
     base_url: str | None = None,
+    on_retry: Callable[[int, float, str], None] | None = None,
 ) -> list[Question]:
     """Ask the model for ``n`` multiple-choice profiling questions.
 
@@ -425,6 +568,7 @@ def generate_questions(
         schema=QUESTION_SCHEMA,
         timeout=timeout,
         base_url=base_url,
+        on_retry=on_retry,
     )
     clean = _strip_fences(raw)
     try:
@@ -457,6 +601,7 @@ def generate_persona(
     files: Sequence[tuple[str, str, bytes]] | None = None,
     timeout: int = 180,
     base_url: str | None = None,
+    on_retry: Callable[[int, float, str], None] | None = None,
 ) -> str:
     """Run the profiling rubric and return the finished persona document.
 
@@ -481,7 +626,7 @@ def generate_persona(
             + formatted_answers
         )
         extracted = call_gemini(api_key, model, instruction, timeout=timeout,
-                                base_url=base_url)
+                                base_url=base_url, on_retry=on_retry)
         return ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted)
 
     described = (
@@ -506,5 +651,6 @@ def generate_persona(
         inline_texts=_samples_to_inline(samples),
         timeout=timeout,
         base_url=base_url,
+        on_retry=on_retry,
     )
     return ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted)

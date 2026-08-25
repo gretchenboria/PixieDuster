@@ -56,12 +56,16 @@ def test_ask_widgets_also_claim_the_region(monkeypatch):
 
 
 def test_the_real_cli_call_sites_do_not_nest():
-    """clone uses stages(); chat uses dust(). Neither wraps the other."""
+    """clone uses stages(); chat uses dust(). Neither wraps the other.
+
+    clone() is now a thin flag wrapper, so the body worth inspecting is
+    _run_clone. Checking the wrapper would pass vacuously.
+    """
     import inspect
 
     from pixieduster import cli
 
-    for fn in (cli.clone, cli.chat, cli.diff):
+    for fn in (cli._run_clone, cli.chat, cli.diff):
         src = inspect.getsource(fn)
         assert not ("ui.dust(" in src and "ui.stages(" in src), (
             f"{fn.__name__} uses both dust() and stages(); they cannot nest."

@@ -52,6 +52,13 @@ __all__ = [
     "error",
     "success",
     "hint",
+    "welcome",
+    "note",
+    "dead_end",
+    "triage_report",
+    "origin_of",
+    "ask_multi",
+    "next_steps",
     "decode_key",
     "STAGE_NAMES",
 ]
@@ -1122,3 +1129,307 @@ def hint(msg: str) -> None:
     text.append("✦ ", style=f"dim {DIM_GOLD}")
     text.append(msg, style=f"dim {MAUVE}")
     _out().print(text)
+
+
+# --------------------------------------------------------------------------
+# Plain-language guidance widgets
+# --------------------------------------------------------------------------
+
+
+def note(title: str, lines: Sequence[str]) -> None:
+    """Print a short titled block of plain-language guidance.
+
+    Degrades to an underlined heading with indented lines when decoration is
+    suppressed.
+    """
+    out = _out()
+    body = [line for line in lines]
+
+    if is_plain():
+        _plain_print()
+        _plain_print(title)
+        _plain_print("-" * len(title))
+        for line in body:
+            _plain_print(f"  {line}" if line else "")
+        _plain_print()
+        return
+
+    head = Text(title, style=f"bold {GOLD}")
+    rendered: list[RenderableType] = [head, Text("")]
+    for line in body:
+        rendered.append(Text(line, style=LILAC if line.endswith(":") else MAUVE))
+    out.print(
+        Panel(
+            Group(*rendered),
+            box=box.ROUNDED,
+            border_style=DIM_GOLD,
+            padding=(0, 2),
+        )
+    )
+
+
+def welcome() -> None:
+    """Explain, before anything else happens, what this tool does for you."""
+    note(
+        "What this does",
+        [
+            "It reads examples of how you write, and writes one file that",
+            "describes your voice: rhythm, vocabulary, humor, how you open and",
+            "close, what you never say.",
+            "",
+            "Hand that file to any AI and it writes the way you write.",
+            "",
+            "Nothing is deleted or changed in your folder. Only copies of the",
+            "text are sent, and you get to see and approve them first.",
+        ],
+    )
+
+
+def dead_end(problem: str, actions: Sequence[str]) -> None:
+    """Report a failure together with the concrete next things to try.
+
+    ``actions`` are printed as a numbered list, so no failure ever leaves the
+    user without a next move.
+    """
+    error(problem)
+    out = _out()
+
+    if is_plain():
+        _plain_print("Try one of these:")
+        for i, action in enumerate(actions, 1):
+            _plain_print(f"  {i}. {action}")
+        return
+
+    lines: list[RenderableType] = [Text("Try one of these:", style=f"bold {LILAC}"), Text("")]
+    for i, action in enumerate(actions, 1):
+        line = Text("  ")
+        line.append(f"{i}. ", style=f"bold {GOLD}")
+        line.append(action, style=MAUVE)
+        lines.append(line)
+    out.print(Panel(Group(*lines), box=box.ROUNDED, border_style=DIM_GOLD, padding=(0, 2)))
+
+
+def next_steps(output_path: str, is_agent_file: bool, persona_name: str) -> None:
+    """Say exactly what was just created and what to do with it."""
+    if is_agent_file:
+        body = [
+            f"Your voice is now written down in {output_path}.",
+            "",
+            f"{output_path} is picked up automatically by that tool the next",
+            "time you open it in this folder. There is nothing else to do.",
+            "",
+            "To hear it out loud first:",
+            f"  pixieduster chat --persona {output_path}",
+        ]
+    else:
+        body = [
+            f"Your voice is now written down in {output_path}.",
+            "",
+            "To use it: open the file, copy all of it, and paste it into",
+            "ChatGPT, Claude, or Gemini as the first message. Then ask for",
+            f"whatever you want written and it will sound like {persona_name}.",
+            "",
+            "To hear it out loud first:",
+            f"  pixieduster chat --persona {output_path}",
+        ]
+    note("Done. Here is what you have", body)
+
+
+# --------------------------------------------------------------------------
+# triage_report() - showing what will and will not be read
+# --------------------------------------------------------------------------
+
+
+def origin_of(scored: Any) -> str:
+    """Best available human name for a scored item."""
+    origin = getattr(scored, "origin", None)
+    if origin:
+        return str(origin)
+    sample = getattr(scored, "sample", None)
+    if sample is not None and getattr(sample, "origin", None):
+        return str(sample.origin)
+    file_ = getattr(scored, "file", None)
+    if file_:
+        return str(file_[0])
+    return "(unnamed)"
+
+
+def triage_report(kept: Sequence[Any], rejected: Sequence[Any]) -> None:
+    """Show which files will be read, which were left out, and why.
+
+    Nothing about a person's own writing is dropped silently: every rejected
+    item is listed by name with the plain-language reason it was rejected.
+    """
+    out = _out()
+    total = len(kept) + len(rejected)
+    unsure = [s for s in kept if getattr(s, "verdict", "keep") == "unsure"]
+
+    if is_plain():
+        _plain_print()
+        _plain_print(f"Using {len(kept)} of {total} file(s).")
+        for s in kept:
+            marker = "?" if getattr(s, "verdict", "keep") == "unsure" else "+"
+            _plain_print(f"  {marker} {origin_of(s)}")
+        if rejected:
+            _plain_print()
+            _plain_print(f"Left out {len(rejected)} file(s), because:")
+            for s in rejected:
+                _plain_print(f"  - {origin_of(s)}: {getattr(s, 'reason', '')}")
+            _plain_print("Nothing was deleted. This only decides what gets sent.")
+        _plain_print()
+        return
+
+    table = Table(
+        box=box.SIMPLE_HEAD,
+        border_style=DIM_GOLD,
+        header_style=f"bold {GOLD}",
+        title=f"Using {len(kept)} of {total} file(s)",
+        title_style=f"bold {GOLD}",
+    )
+    table.add_column("", width=1)
+    table.add_column("File", style=LILAC, overflow="ellipsis")
+    table.add_column("Why", style=MAUVE, overflow="fold")
+    for s in kept:
+        is_unsure = getattr(s, "verdict", "keep") == "unsure"
+        table.add_row(
+            Text("?" if is_unsure else "✓", style=f"bold {DIM_GOLD if is_unsure else GOLD}"),
+            origin_of(s),
+            getattr(s, "reason", "") if is_unsure else "",
+        )
+    out.print(table)
+
+    if unsure:
+        hint("A '?' means it was a close call. It is being used anyway.")
+
+    if not rejected:
+        return
+
+    # "these do not look like your writing" is not true of every rejection: an
+    # unreadable PDF is left out because we could not check it, not because we
+    # judged it. Say something true of both, and let the per-file reason speak.
+    unreadable = any(getattr(s, "verdict", "") == "unsure" for s in rejected)
+    skipped = Table(
+        box=box.SIMPLE_HEAD,
+        border_style=DIM_GOLD,
+        header_style=f"bold {DIM_GOLD}",
+        title=(
+            f"Left out ({len(rejected)}) - not sent unless you add them back"
+            if unreadable
+            else f"Left out ({len(rejected)}) - these do not look like your writing"
+        ),
+        title_style=f"bold {DIM_GOLD}",
+    )
+    skipped.add_column("", width=1)
+    skipped.add_column("File", style=MAUVE, overflow="ellipsis")
+    skipped.add_column("Why", style=MAUVE, overflow="fold")
+    for s in rejected:
+        skipped.add_row(Text("-", style=DIM_GOLD), origin_of(s), getattr(s, "reason", ""))
+    out.print(skipped)
+    hint("Nothing was deleted. This only decides what gets sent to be read.")
+
+
+# --------------------------------------------------------------------------
+# ask_multi()
+# --------------------------------------------------------------------------
+
+
+def _multi_renderable(
+    question: str, options: Sequence[str], chosen: Sequence[bool], cursor: int
+) -> RenderableType:
+    head = Text(question, style=f"bold {LILAC}")
+    rows: list[Text] = []
+    for i, option in enumerate(options):
+        mark = "x" if chosen[i] else " "
+        if i == cursor:
+            row = Text("  ")
+            row.append(f" [{mark}] {option} ", style=f"bold {DEEP} on {GOLD}")
+        else:
+            row = Text("  ")
+            row.append(f" [{mark}] {option} ", style=MAUVE)
+        rows.append(row)
+    foot = Text("  ↑/↓ move · space to tick · enter when done", style=f"dim {DIM_GOLD}")
+    return Panel(
+        Group(head, Text(""), *rows, Text(""), foot),
+        box=box.ROUNDED,
+        border_style=DIM_GOLD,
+        padding=(0, 1),
+    )
+
+
+def _parse_selection(raw: str, count: int) -> list[int] | None:
+    """Parse "1,3 5" into zero-based indices. None if anything is out of range."""
+    picked: list[int] = []
+    for chunk in raw.replace(",", " ").split():
+        if not chunk.isdigit():
+            return None
+        n = int(chunk)
+        if not 1 <= n <= count:
+            return None
+        if n - 1 not in picked:
+            picked.append(n - 1)
+    return picked
+
+
+@_guard_fn("ask_multi")
+def ask_multi(question: str, options: list[str]) -> list[int]:
+    """Tick any number of options; returns the chosen zero-based indices.
+
+    Nothing is ticked to begin with, so simply pressing enter (or piping input)
+    changes nothing. When decoration is suppressed it falls back to typing a
+    list of numbers, and an empty line means "none".
+    """
+    if not options:
+        return []
+
+    out = _out()
+
+    if not _interactive():
+        _plain_print(question)
+        for i, option in enumerate(options, 1):
+            _plain_print(f"  {i}. {option}")
+        while True:
+            try:
+                raw = input("Numbers to include, or blank for none: ").strip()
+            except EOFError:
+                return []
+            if not raw:
+                return []
+            picked = _parse_selection(raw, len(options))
+            if picked is not None:
+                return picked
+            _plain_print(f"Please enter numbers from 1 to {len(options)}, or nothing.")
+
+    chosen = [False] * len(options)
+    cursor = 0
+    with Live(
+        _multi_renderable(question, options, chosen, cursor),
+        console=out,
+        refresh_per_second=20,
+        transient=True,
+    ) as live:
+        while True:
+            key = _read_key()
+            if key == "up":
+                cursor = (cursor - 1) % len(options)
+            elif key == "down":
+                cursor = (cursor + 1) % len(options)
+            elif key == "space":
+                chosen[cursor] = not chosen[cursor]
+            elif key in ("enter", "eof", "escape"):
+                break
+            elif key == "interrupt":
+                raise KeyboardInterrupt
+            elif key.isdigit() and 1 <= int(key) <= len(options):
+                idx = int(key) - 1
+                chosen[idx] = not chosen[idx]
+                cursor = idx
+            live.update(_multi_renderable(question, options, chosen, cursor))
+
+    picked = [i for i, on in enumerate(chosen) if on]
+    done = Text("  ")
+    done.append("✓", style=f"bold {GOLD}")
+    done.append(f" {question} ", style=f"dim {MAUVE}")
+    done.append(f"{len(picked)} added back" if picked else "nothing added back",
+                style=f"bold {GOLD}")
+    out.print(done)
+    return picked

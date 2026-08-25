@@ -590,3 +590,230 @@ def test_fd_stream_read_on_closed_fd_is_empty():
     os.close(r)
     os.close(w)
     assert ui._FdStream(r).read(1) == ""
+
+
+# --------------------------------------------------------------------------
+# note() / welcome() / dead_end() / next_steps()
+# --------------------------------------------------------------------------
+
+
+def test_note_plain(cap, plain):
+    ui.note("What this does", ["line one", "", "line two"])
+    out = cap.getvalue()
+    assert "What this does" in out
+    assert "line one" in out
+    assert "line two" in out
+    assert "╭" not in out
+
+
+def test_note_rich_is_boxed(rich_cap, monkeypatch):
+    monkeypatch.setattr(ui, "is_plain", lambda: False)
+    ui.note("Heading", ["body"])
+    out = ANSI_RE.sub("", rich_cap.getvalue())
+    assert "Heading" in out
+    assert "body" in out
+    assert "─" in out
+
+
+def test_welcome_explains_the_output(cap, plain):
+    ui.welcome()
+    out = cap.getvalue()
+    assert "writes one file" in out
+    assert "Nothing is deleted" in out
+
+
+def test_dead_end_numbers_the_next_actions(cap, plain):
+    ui.dead_end("Nothing to read.", ["do this", "or do that"])
+    out = cap.getvalue()
+    assert "ERROR: Nothing to read." in out
+    assert "1. do this" in out
+    assert "2. or do that" in out
+
+
+def test_dead_end_rich(rich_cap, monkeypatch):
+    monkeypatch.setattr(ui, "is_plain", lambda: False)
+    ui.dead_end("Nope.", ["first thing", "second thing"])
+    out = ANSI_RE.sub("", rich_cap.getvalue())
+    assert "Nope." in out
+    assert "1." in out and "first thing" in out
+
+
+def test_next_steps_for_a_pasteable_file(cap, plain):
+    ui.next_steps("persona.md", False, "ada")
+    out = cap.getvalue()
+    assert "persona.md" in out
+    assert "paste" in out.lower()
+    assert "ada" in out
+
+
+def test_next_steps_for_an_agent_file(cap, plain):
+    ui.next_steps("CLAUDE.md", True, "ada")
+    out = cap.getvalue()
+    assert "automatically" in out
+    assert "nothing else to do" in out.lower()
+
+
+# --------------------------------------------------------------------------
+# triage_report()
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class FakeScored:
+    origin: str
+    reason: str
+    verdict: str
+    score: float = 0.5
+    sample: object = None
+    file: object = None
+
+
+KEPT = [
+    FakeScored("morning-note.txt", "reads like personal writing", "keep"),
+    FakeScored("half-list.md", "part list, part prose", "unsure"),
+]
+REJECTED = [
+    FakeScored("invoice-2411.pdf", "looks like an invoice, not your writing", "drop"),
+    FakeScored("shopping.txt", "a list of items, not sentences", "drop"),
+]
+
+
+def test_triage_report_plain_names_everything(cap, plain):
+    ui.triage_report(KEPT, REJECTED)
+    out = cap.getvalue()
+    assert "Using 2 of 4 file(s)." in out
+    for item in KEPT + REJECTED:
+        assert item.origin in out
+    for item in REJECTED:
+        assert item.reason in out
+    assert "Nothing was deleted" in out
+
+
+def test_triage_report_rich_names_everything(rich_cap, monkeypatch):
+    monkeypatch.setattr(ui, "is_plain", lambda: False)
+    ui.triage_report(KEPT, REJECTED)
+    out = ANSI_RE.sub("", rich_cap.getvalue()).replace("\n", " ")
+    for item in KEPT + REJECTED:
+        assert item.origin in out
+    assert "invoice" in out
+    assert "Nothing was deleted" in out
+
+
+def test_triage_report_with_nothing_rejected(cap, plain):
+    ui.triage_report(KEPT, [])
+    out = cap.getvalue()
+    assert "Using 2 of 2 file(s)." in out
+    assert "Left out" not in out
+
+
+def test_triage_report_no_ansi_when_no_color(monkeypatch):
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setattr(ui, "PLAIN", False)
+    buf = io.StringIO()
+    monkeypatch.setattr(
+        ui, "console", Console(file=buf, force_terminal=True, no_color=True, width=80)
+    )
+    ui.welcome()
+    ui.note("t", ["a"])
+    ui.dead_end("x", ["y", "z"])
+    ui.triage_report(KEPT, REJECTED)
+    ui.next_steps("persona.md", False, "ada")
+    assert ANSI_RE.search(buf.getvalue()) is None
+
+
+def test_origin_of_falls_back_to_sample_and_file():
+    @dataclass
+    class Bare:
+        origin: str = ""
+        sample: object = None
+        file: object = None
+
+    assert ui.origin_of(Bare(origin="a.txt")) == "a.txt"
+    assert ui.origin_of(Bare(sample=FakeSample("file", "b.txt"))) == "b.txt"
+    assert ui.origin_of(Bare(file=("c.png", "image/png", b""))) == "c.png"
+    assert ui.origin_of(Bare()) == "(unnamed)"
+
+
+# --------------------------------------------------------------------------
+# ask_multi()
+# --------------------------------------------------------------------------
+
+
+def test_parse_selection():
+    assert ui._parse_selection("1,3", 3) == [0, 2]
+    assert ui._parse_selection("2 2 1", 3) == [1, 0]
+    assert ui._parse_selection("", 3) == []
+    assert ui._parse_selection("4", 3) is None
+    assert ui._parse_selection("x", 3) is None
+
+
+def test_ask_multi_plain_defaults_to_none(cap, plain, monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda *_: "")
+    assert ui.ask_multi("Put any back?", ["a", "b"]) == []
+    assert "1. a" in cap.getvalue()
+
+
+def test_ask_multi_plain_picks_numbers(cap, plain, monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda *_: "2")
+    assert ui.ask_multi("Put any back?", ["a", "b"]) == [1]
+
+
+def test_ask_multi_plain_reprompts_on_garbage(cap, plain, monkeypatch):
+    answers = iter(["nine", "1"])
+    monkeypatch.setattr("builtins.input", lambda *_: next(answers))
+    assert ui.ask_multi("Put any back?", ["a", "b"]) == [0]
+    assert "Please enter numbers" in cap.getvalue()
+
+
+def test_ask_multi_plain_eof_is_none(cap, plain, monkeypatch):
+    def boom(*_):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", boom)
+    assert ui.ask_multi("Put any back?", ["a", "b"]) == []
+
+
+def test_ask_multi_with_no_options_is_empty():
+    assert ui.ask_multi("Put any back?", []) == []
+
+
+def test_ask_multi_interactive_space_toggles(rich_cap, monkeypatch):
+    monkeypatch.setattr(ui, "is_plain", lambda: False)
+    monkeypatch.setattr(ui, "_interactive", lambda: True)
+    keys = iter(["space", "down", "down", "space", "enter"])
+    monkeypatch.setattr(ui, "_read_key", lambda: next(keys))
+    assert ui.ask_multi("Put any back?", ["a", "b", "c"]) == [0, 2]
+
+
+def test_ask_multi_interactive_untoggles(rich_cap, monkeypatch):
+    monkeypatch.setattr(ui, "is_plain", lambda: False)
+    monkeypatch.setattr(ui, "_interactive", lambda: True)
+    keys = iter(["space", "space", "enter"])
+    monkeypatch.setattr(ui, "_read_key", lambda: next(keys))
+    assert ui.ask_multi("Put any back?", ["a", "b"]) == []
+
+
+def test_ask_multi_interactive_digit_toggles(rich_cap, monkeypatch):
+    monkeypatch.setattr(ui, "is_plain", lambda: False)
+    monkeypatch.setattr(ui, "_interactive", lambda: True)
+    keys = iter(["2", "enter"])
+    monkeypatch.setattr(ui, "_read_key", lambda: next(keys))
+    assert ui.ask_multi("Put any back?", ["a", "b"]) == [1]
+
+
+def test_ask_multi_interactive_ctrl_c(rich_cap, monkeypatch):
+    monkeypatch.setattr(ui, "is_plain", lambda: False)
+    monkeypatch.setattr(ui, "_interactive", lambda: True)
+    monkeypatch.setattr(ui, "_read_key", lambda: "interrupt")
+    with pytest.raises(KeyboardInterrupt):
+        ui.ask_multi("Put any back?", ["a", "b"])
+
+
+def test_ask_multi_claims_the_live_region(monkeypatch):
+    monkeypatch.setattr(ui, "PLAIN", True)
+    monkeypatch.setattr("builtins.input", lambda *_: "")
+    ui._live_owner.clear()
+    with pytest.raises(ui.LiveConflictError):
+        with ui.stages("t"):
+            ui.ask_multi("q", ["a"])
+    ui._live_owner.clear()

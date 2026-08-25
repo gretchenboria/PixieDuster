@@ -19,6 +19,7 @@ from __future__ import annotations
 import mimetypes
 from pathlib import Path
 
+from .relevance import DEFAULT_BUDGET_CHARS, Scored, triage
 from .types import Sample
 
 #: Extensions read as text and sent inline.
@@ -169,6 +170,45 @@ def load(
     return samples, files
 
 
+def load_triaged(
+    paths: list[Path],
+    *,
+    max_files: int = MAX_FILES,
+    max_bytes: int = MAX_FILE_BYTES,
+    budget_chars: int = DEFAULT_BUDGET_CHARS,
+) -> tuple[list[Scored], list[Scored]]:
+    """Load writing samples and sort them by how much they look like your voice.
+
+    This is :func:`load` followed by :func:`pixieduster.relevance.triage`. Use
+    it instead of :func:`load` anywhere a folder of somebody's real documents
+    might be pointed at, which is to say everywhere a person is involved.
+
+    Args:
+        budget_chars: Total characters of text one run may send.
+
+    Returns:
+        ``(kept, rejected)`` :class:`~pixieduster.relevance.Scored` lists, best
+        score first. Nothing is discarded: every loaded file is in one list or
+        the other, with a plain-language ``reason``.
+
+    Raises:
+        SourceError: As for :func:`load`.
+    """
+    samples, files = load(paths, max_files=max_files, max_bytes=max_bytes)
+    return triage(samples, files, budget_chars=budget_chars)
+
+
+def unpack(kept: list[Scored]) -> tuple[list[Sample], list[tuple[str, str, bytes]]]:
+    """Split a :func:`load_triaged` result back into ``(samples, files)``.
+
+    Lets a caller feed a triaged, possibly user-edited selection straight into
+    the same code paths that consume :func:`load`.
+    """
+    samples = [item.sample for item in kept if item.sample is not None]
+    files = [item.file for item in kept if item.file is not None]
+    return samples, files
+
+
 def describe(files: list[tuple[str, str, bytes]]) -> list[str]:
     """One human-readable line per binary file, for the dry-run report."""
     return [
@@ -185,5 +225,7 @@ __all__ = [
     "MAX_FILE_BYTES",
     "expand",
     "load",
+    "load_triaged",
+    "unpack",
     "describe",
 ]

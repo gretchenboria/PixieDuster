@@ -374,3 +374,202 @@ def test_generate_persona_braces_in_output_survive(captured):
     captured["response"] = text_reply("uses {curly} braces a lot")
     doc = core.generate_persona(FAKE_KEY, "m", "G", SAMPLES, [])
     assert "uses {curly} braces a lot" in doc
+
+
+# --------------------------------------------------------------------------- #
+# Retry
+#
+# A run may have cost the user two minutes of answering questions before the
+# final call goes out. A 429 from the hosted proxy or a dropped connection
+# should not throw that away. A 401 should fail at once: retrying a wrong
+# credential just wastes the user's time.
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture
+def no_sleep(monkeypatch):
+    """Record backoff waits instead of taking them."""
+    waits: list[float] = []
+    monkeypatch.setattr(core.time, "sleep", waits.append)
+    return waits
+
+
+def _sequence(monkeypatch, responses):
+    """Serve ``responses`` in order; an exception instance is raised."""
+    calls = {"n": 0}
+
+    def fake_post(url, headers=None, json=None, timeout=None, **kw):
+        item = responses[calls["n"]]
+        calls["n"] += 1
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    return calls
+
+
+def test_retries_two_transient_failures_then_succeeds(monkeypatch, no_sleep):
+    calls = _sequence(
+        monkeypatch,
+        [
+            requests.ConnectionError("connection reset"),
+            FakeResponse({"error": {"message": "rate limited"}}, status_code=429),
+            text_reply("made it"),
+        ],
+    )
+    assert core.call_gemini(FAKE_KEY, "m", "hi") == "made it"
+    assert calls["n"] == 3
+    assert no_sleep == [1.0, 2.0]
+
+
+def test_a_timeout_is_retried(monkeypatch, no_sleep):
+    calls = _sequence(monkeypatch, [requests.Timeout("timed out"), text_reply("ok")])
+    assert core.call_gemini(FAKE_KEY, "m", "hi") == "ok"
+    assert calls["n"] == 2
+
+
+def test_a_503_is_retried(monkeypatch, no_sleep):
+    calls = _sequence(
+        monkeypatch,
+        [FakeResponse({"error": {"message": "overloaded"}}, status_code=503),
+         text_reply("ok")],
+    )
+    assert core.call_gemini(FAKE_KEY, "m", "hi") == "ok"
+    assert calls["n"] == 2
+
+
+def test_401_is_never_retried(monkeypatch, no_sleep):
+    calls = _sequence(
+        monkeypatch,
+        [FakeResponse({"error": {"message": "API key not valid"}}, status_code=401),
+         text_reply("should never be reached")],
+    )
+    with pytest.raises(core.GeminiError) as exc:
+        core.call_gemini(FAKE_KEY, "m", "hi")
+    assert calls["n"] == 1
+    assert no_sleep == []
+    assert "401" in str(exc.value)
+
+
+def test_400_and_403_are_never_retried(monkeypatch, no_sleep):
+    for status in (400, 403):
+        calls = _sequence(
+            monkeypatch,
+            [FakeResponse({"error": {"message": "nope"}}, status_code=status),
+             text_reply("unreachable")],
+        )
+        with pytest.raises(core.GeminiError):
+            core.call_gemini(FAKE_KEY, "m", "hi")
+        assert calls["n"] == 1, status
+    assert no_sleep == []
+
+
+def test_retries_are_bounded_and_then_give_up(monkeypatch, no_sleep):
+    calls = _sequence(monkeypatch, [requests.ConnectionError("down")] * 10)
+    with pytest.raises(core.GeminiError) as exc:
+        core.call_gemini(FAKE_KEY, "m", "hi")
+    assert calls["n"] == core.MAX_ATTEMPTS
+    assert "after 3 tries" in str(exc.value)
+
+
+def test_a_request_that_already_succeeded_is_not_retried(monkeypatch, no_sleep):
+    """A 200 with an unparsable body is not the server's fault to repeat."""
+    calls = _sequence(monkeypatch, [FakeResponse(_NOT_JSON, text="<html>"), text_reply("nope")])
+    with pytest.raises(core.GeminiError, match="not JSON"):
+        core.call_gemini(FAKE_KEY, "m", "hi")
+    assert calls["n"] == 1
+
+
+def test_an_empty_candidate_list_is_not_retried(monkeypatch, no_sleep):
+    calls = _sequence(monkeypatch, [FakeResponse({"candidates": []}), text_reply("no")])
+    with pytest.raises(core.GeminiError):
+        core.call_gemini(FAKE_KEY, "m", "hi")
+    assert calls["n"] == 1
+
+
+def test_a_bad_url_is_not_retried(monkeypatch, no_sleep):
+    calls = _sequence(monkeypatch, [requests.exceptions.InvalidURL("bad"), text_reply("no")])
+    with pytest.raises(core.GeminiError):
+        core.call_gemini(FAKE_KEY, "m", "hi")
+    assert calls["n"] == 1
+    assert no_sleep == []
+
+
+def test_on_retry_callback_sees_the_wait(monkeypatch, no_sleep):
+    _sequence(
+        monkeypatch,
+        [FakeResponse({"error": {"message": "slow down"}}, status_code=429),
+         text_reply("ok")],
+    )
+    seen: list[tuple[int, float, str]] = []
+    core.call_gemini(FAKE_KEY, "m", "hi", on_retry=lambda *a: seen.append(a))
+    assert len(seen) == 1
+    attempt, delay, why = seen[0]
+    assert attempt == 1 and delay == 1.0
+    assert "limit" in why
+
+
+def test_module_level_notifier_is_used_when_no_callback_is_passed(monkeypatch, no_sleep):
+    _sequence(monkeypatch, [requests.Timeout("t"), text_reply("ok")])
+    seen: list[tuple] = []
+    monkeypatch.setattr(core, "RETRY_NOTIFIER", lambda *a: seen.append(a))
+    core.call_gemini(FAKE_KEY, "m", "hi")
+    assert len(seen) == 1
+
+
+def test_a_broken_notifier_does_not_fail_the_run(monkeypatch, no_sleep):
+    _sequence(monkeypatch, [requests.Timeout("t"), text_reply("ok")])
+
+    def explode(*_args):
+        raise RuntimeError("bad UI")
+
+    assert core.call_gemini(FAKE_KEY, "m", "hi", on_retry=explode) == "ok"
+
+
+def test_retry_after_header_is_honored(monkeypatch, no_sleep):
+    slow = FakeResponse({"error": {"message": "slow"}}, status_code=429)
+    slow.headers = {"Retry-After": "7"}
+    _sequence(monkeypatch, [slow, text_reply("ok")])
+    core.call_gemini(FAKE_KEY, "m", "hi")
+    assert no_sleep == [7.0]
+
+
+def test_retry_after_is_capped(monkeypatch, no_sleep):
+    slow = FakeResponse({"error": {"message": "slow"}}, status_code=429)
+    slow.headers = {"Retry-After": "9999"}
+    _sequence(monkeypatch, [slow, text_reply("ok")])
+    core.call_gemini(FAKE_KEY, "m", "hi")
+    assert no_sleep == [core.RETRY_MAX_DELAY]
+
+
+def test_a_junk_retry_after_falls_back_to_backoff(monkeypatch, no_sleep):
+    slow = FakeResponse({"error": {"message": "slow"}}, status_code=429)
+    slow.headers = {"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}
+    _sequence(monkeypatch, [slow, text_reply("ok")])
+    core.call_gemini(FAKE_KEY, "m", "hi")
+    assert no_sleep == [1.0]
+
+
+def test_the_retried_error_message_still_hides_the_key(monkeypatch, no_sleep):
+    _sequence(monkeypatch, [requests.ConnectionError(f"failed with key={FAKE_KEY}")] * 5)
+    with pytest.raises(core.GeminiError) as exc:
+        core.call_gemini(FAKE_KEY, "m", "hi")
+    assert FAKE_KEY not in str(exc.value)
+    assert "<REDACTED-API-KEY>" in str(exc.value)
+
+
+def test_chat_gemini_retries_too(monkeypatch, no_sleep):
+    calls = _sequence(monkeypatch, [requests.Timeout("t"), text_reply("hello")])
+    assert core.chat_gemini(FAKE_KEY, "m", "sys", [], "hi") == "hello"
+    assert calls["n"] == 2
+
+
+def test_generate_persona_retries_a_429(monkeypatch, no_sleep):
+    calls = _sequence(
+        monkeypatch,
+        [FakeResponse({"error": {"message": "quota"}}, status_code=429),
+         text_reply("she writes in short bursts")],
+    )
+    doc = core.generate_persona(FAKE_KEY, "m", "G", SAMPLES, [])
+    assert "she writes in short bursts" in doc
+    assert calls["n"] == 2
