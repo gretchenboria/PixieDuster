@@ -1,9 +1,6 @@
 import streamlit as st
 import requests
-import os
 import json
-import textwrap
-from dotenv import load_dotenv
 import time
 import base64
 

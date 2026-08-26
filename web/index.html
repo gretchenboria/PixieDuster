@@ -57,11 +57,40 @@
       window.pdApi = "https://pixieduster-api.me-c41.workers.dev/api";
       window.pdSession = "";
 
-      function pdReady() {
-        document.getElementById("pd-status").textContent = "";
+      // Two things must finish before the app is usable: the human check,
+      // and stlite compiling Streamlit's stack in the browser. Revealing on
+      // the first alone drops the visitor onto a blank page.
+      var pdChecked = false;
+      var pdMounted = false;
+
+      function pdMaybeReady() {
+        var status = document.getElementById("pd-status");
+        if (!pdChecked) return;
+        if (!pdMounted) {
+          status.textContent =
+            "Starting up. The first load takes a few seconds; it is building " +
+            "Python in your browser.";
+          return;
+        }
+        status.textContent = "";
         document.getElementById("pd-gate").classList.add("done");
         document.getElementById("root").classList.add("ready");
       }
+
+      function pdReady() {
+        pdChecked = true;
+        pdMaybeReady();
+      }
+
+      // Streamlit gives no ready event here, so watch for it painting.
+      new MutationObserver(function (records, observer) {
+        var root = document.getElementById("root");
+        if (root && root.querySelector('[data-testid="stAppViewContainer"], .stApp')) {
+          pdMounted = true;
+          observer.disconnect();
+          pdMaybeReady();
+        }
+      }).observe(document.getElementById("root"), { childList: true, subtree: true });
 
       async function pdVerified(token) {
         const status = document.getElementById("pd-status");
@@ -106,7 +135,7 @@
       };
       stlite.mount(
         {
-          requirements: ["requests", "python-dotenv"],
+          requirements: ["requests"],   // dotenv went with the API key form
           entrypoint: "app.py",
           files: {
             "app.py": {
