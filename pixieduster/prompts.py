@@ -63,17 +63,45 @@ QUESTION_SCHEMA: dict = {
     },
 }
 
+
+#: How much evidence the analysis actually had, and what to do about it.
+#: Placeholder: ``{evidence}``. Appended to the extraction rubric.
+CONFIDENCE_INSTRUCTION = (
+    "EVIDENCE AVAILABLE: {evidence}\n"
+    "Weigh every claim against that. A trait you saw once is not a trait; a trait "
+    "you saw in most of the samples is. Mark each claim you make:\n"
+    "  [clear]       seen repeatedly, across more than one sample\n"
+    "  [likely]      seen more than once, or once but unmistakably\n"
+    "  [provisional] inferred from a single instance, or from very little text\n"
+    "Do not soften a weak claim into a vague one to avoid marking it provisional. "
+    "Be specific and mark it honestly instead.\n"
+    "Mark claims about the persona ONLY. Never put a marker on an item in the "
+    "gaps section below: those are things you do not know, so a confidence "
+    "marker on them is meaningless.\n\n"
+    "End with a section titled 'CONFIDENCE AND GAPS' containing:\n"
+    "  - How much writing this was drawn from, in one line.\n"
+    "  - What you could NOT determine from it. Name the specific things: how they "
+    "argue, how they write when angry, how they open a message to a stranger, "
+    "whether they are funny in writing, how they behave at length. Say plainly "
+    "which of these the evidence simply does not cover.\n"
+    "  - What kind of writing would settle those gaps, concretely.\n"
+    "If the writing genuinely has no distinctive voice, say so outright rather than "
+    "manufacturing one. That is a real and useful finding, not a failure.\n\n"
+)
+
 #: The empirical profiling rubric. Verbatim from app.py.
 PERSONA_RUBRIC = (
     "PSYCHOLOGICAL & EMPIRICAL PROFILING RUBRIC:\n"
     "You must evaluate the text and answers strictly using the following empirical rubrics:\n"
     "1. LIWC Lexical/Syntactic Fingerprint: Analyze Pronoun Orientation (1st person singular vs plural vs 2nd/3rd), Affective Processes (Positive vs Negative Emotion clusters), Cognitive Processes (Insight, Causation, Tentativeness vs Certainty), and Temporal Orientation (Past/Present/Future).\n"
-    "2. The Big Five (OCEAN): Map linguistic data to Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism based on lexical richness, structure, social words, hedging, and self-doubt.\n"
+    "2. The Big Five (OCEAN): Map linguistic data to Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism based on lexical richness, structure, social words, hedging, and self-doubt. Give each a score out of 5 and the lexical evidence for it, one per line. Never write the five as a single paragraph.\n"
     "3. Cognitive Style & Epistemic Stance: Is the author analytical or narrative? Do they rely on empirical citations, personal anecdotes, or axioms? Do they display dialectical thinking or binary/dogmatic thinking?\n"
     "4. Sociolinguistics: Document academic vs colloquial register, specific jargon, syntactic rhythm (staccato vs winding), and punctuation quirks.\n"
     + HUMOR_INSTRUCTION +
+    "Include a NEVER list: constructions, words, punctuation and habits this author demonstrably avoids. Negative space defines a voice as sharply as what it does. "
     "Based on ALL of this, extract their unique terminology standard, recurring thought patterns, sentence structure, and overall persona. "
-    "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler."
+    "Output ONLY the extracted 'Terminology Standards & Persona' summary designed to be injected directly into a system prompt. Do not include any conversational filler.\n\n"
+    + CONFIDENCE_INSTRUCTION
 )
 
 
@@ -112,6 +140,10 @@ INVENT_RUBRIC = (
     + HUMOR_INSTRUCTION +
     "Give it real edges: things it dislikes, a way it deflects, a topic it warms to. A persona "
     "that is uniformly pleasant is not a character. "
+    "Mark each choice [implied] where the description dictated it, or [invented] where you filled a "
+    "gap the description left open, so its creator can see what they actually specified and what you "
+    "decided for them. End with a short 'WHAT I DECIDED FOR YOU' section listing the [invented] "
+    "choices worth overriding.\n\n"
     "Output ONLY the 'Terminology Standards & Persona' summary, written to be injected directly "
     "into a system prompt. Do not include any conversational filler."
 )
@@ -185,6 +217,7 @@ __all__ = [
     "QUESTIONS_INSTRUCTION",
     "QUESTION_SCHEMA",
     "HUMOR_INSTRUCTION",
+    "CONFIDENCE_INSTRUCTION",
     "PERSONA_RUBRIC",
     "AGENTS_MD_HEADER",
     "INVENT_QUESTIONS_INSTRUCTION",

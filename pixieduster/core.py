@@ -19,6 +19,7 @@ from typing import Any, Callable, Iterable, Sequence
 import requests
 
 from .prompts import (
+    CONFIDENCE_INSTRUCTION,
     INVENT_QUESTIONS_INSTRUCTION,
     INVENT_RUBRIC,
     ANTI_AI_PROMPT_TEMPLATE,
@@ -629,6 +630,18 @@ def generate_persona(
                                 base_url=base_url, on_retry=on_retry)
         return ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted)
 
+    # Tell the model how much it actually had to work from. Without this it
+    # writes with the same confidence off four samples as off four hundred.
+    words = sum(len(s.text.split()) for s in samples)
+    parts = []
+    if samples:
+        parts.append(f"{len(samples)} text sample(s), about {words:,} words in total")
+    if files:
+        parts.append(f"{len(files)} image(s) or document(s) you must read yourself")
+    evidence = " and ".join(parts) if parts else "no writing samples at all"
+    if samples and words < 400:
+        evidence += ". That is very little. Expect most claims to be provisional"
+
     described = (
         f"The user describes this persona as: \"{description}\". Honour that description; "
         "use the samples as evidence for how it should sound.\n\n"
@@ -641,7 +654,7 @@ def generate_persona(
         "I also asked the user some multiple choice questions to refine the persona.\n"
         f"Here are their answers:\n{formatted_answers}\n\n"
         + "\n\n"
-        + PERSONA_RUBRIC
+        + PERSONA_RUBRIC.replace("{evidence}", evidence)
     )
     extracted = call_gemini(
         api_key,
