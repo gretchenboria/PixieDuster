@@ -254,8 +254,10 @@ if st.session_state.step == 1:
             with st.status("Running Analysis...", expanded=True) as status:
                 try:
                     st.markdown("<i class='fa-solid fa-magnifying-glass fa-beat-fade' style='color:#ffd700;'></i> Inspecting your writing samples...", unsafe_allow_html=True)
-                    # In memory upload for REST API
-                    st.session_state.uploaded_genai_files = uploaded_files
+                    # Convert UploadedFile objects to raw tuples (name, type, bytes) immediately
+                    # so they survive when the file_uploader widget is unmounted in Step 2.
+                    file_tuples = _as_file_tuples(uploaded_files)
+                    st.session_state.uploaded_genai_files = file_tuples
                     
                     st.markdown("<i class='fa-solid fa-list-check fa-flip' style='color:#ffd700;'></i> Formulating profiling questions...", unsafe_allow_html=True)
                     prompt_instruction = QUESTIONS_INSTRUCTION.format(
@@ -268,7 +270,7 @@ if st.session_state.step == 1:
                         api_key,
                         model_id,
                         prompt_instruction,
-                        files=_as_file_tuples(uploaded_files),
+                        files=file_tuples,
                         schema=QUESTION_SCHEMA,
                     )
                     clean_text = response_text.strip()
@@ -357,7 +359,7 @@ elif st.session_state.step == 2:
                             api_key,
                             model_id,
                             final_instruction,
-                            files=_as_file_tuples(st.session_state.uploaded_genai_files),
+                            files=st.session_state.uploaded_genai_files,
                         )
                         
                         st.session_state.final_prompt = ANTI_AI_PROMPT_TEMPLATE.replace("{extracted_persona}", extracted_persona)

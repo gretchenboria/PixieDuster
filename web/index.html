@@ -11,7 +11,7 @@
     <!-- Turnstile: proves the visitor is a person, so the hosted key can be
          used without anyone typing a key of their own. The sitekey is public
          by design; the matching secret lives only on the Worker. -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
+    <!-- Turnstile script moved to body to prevent race condition -->
     <style>
       html, body { margin: 0; background: #0f081c; }
       /* Normal flow, pinned to the top. `position: fixed` centerd this in the
@@ -102,6 +102,26 @@
           });
           if (!r.ok) throw new Error(await r.text());
           window.pdSession = (await r.json()).session;
+          window.localStorage.setItem("pdSession", window.pdSession);
+          
+          // Mount stlite ONLY AFTER we have the session token, and pass it directly as a Python module!
+          stlite.mount(
+            {
+              requirements: ["requests"],
+              entrypoint: "app.py",
+              files: {
+                "app.py": {
+                  url: "./app.py?v=" + Date.now(),
+                },
+                "logo.png": {
+                    url: "./logo.png",
+                },
+                "session_token.py": "TOKEN = '" + window.pdSession + "'\n"
+              },
+            },
+            document.getElementById("root")
+          );
+          
           pdReady();
         } catch (e) {
           status.textContent =
@@ -133,21 +153,7 @@
           },
         });
       };
-      stlite.mount(
-        {
-          requirements: ["requests"],   // dotenv went with the API key form
-          entrypoint: "app.py",
-          files: {
-            "app.py": {
-              url: "./app.py",
-            },
-            "logo.png": {
-                url: "./logo.png",
-            }
-          },
-        },
-        document.getElementById("root")
-      );
     </script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
   </body>
 </html>

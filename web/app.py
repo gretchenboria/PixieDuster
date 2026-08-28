@@ -15,9 +15,18 @@ API_ROOT = "https://pixieduster-api.me-c41.workers.dev/api"
 def _session_token():
     """Read the session minted by index.html. Empty string outside the browser."""
     try:
+        import session_token
+        return session_token.TOKEN
+    except ImportError:
+        pass
+
+    try:
         from js import window  # available under stlite/Pyodide
+        token = str(window.localStorage.getItem("pdSession") or "")
+        if token:
+            return token
         return str(window.pdSession or "")
-    except Exception:
+    except Exception as e:
         return ""
 
 
@@ -37,8 +46,6 @@ def _friendly_error(response):
         detail = None
     if response.status_code == 429:
         return detail or "The free daily limit has been reached. Try again tomorrow."
-    if response.status_code == 401:
-        return "Your session expired. Reload the page."
     return detail or f"The service returned an error ({response.status_code})."
 
 
@@ -76,6 +83,10 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
                 }
             }
         }
+    token = _session_token()
+    if token.startswith("ERROR:"):
+        raise Exception(f"Session Token Debug: {token}")
+
     response = requests.post(url, headers=_api_headers(), json=payload)
     if not response.ok:
         raise Exception(_friendly_error(response))
@@ -428,8 +439,18 @@ if st.session_state.step == 1:
             with st.status("Running Analysis...", expanded=True) as status:
                 try:
                     st.markdown("<i class='fa-solid fa-magnifying-glass fa-beat-fade' style='color:#ffd700;'></i> Inspecting your writing samples...", unsafe_allow_html=True)
-                    # In memory upload for REST API
-                    st.session_state.uploaded_genai_files = uploaded_files
+                    # Convert UploadedFile objects to in-memory objects immediately
+                    # so they survive when the file_uploader widget is unmounted in Step 2.
+                    class MemFile:
+                        def __init__(self, name, type, data):
+                            self.name = name
+                            self.type = type
+                            self.data = data
+                        def getvalue(self):
+                            return self.data
+                    
+                    mem_files = [MemFile(f.name, f.type, f.getvalue()) for f in uploaded_files]
+                    st.session_state.uploaded_genai_files = mem_files
                     
                     st.markdown("<i class='fa-solid fa-list-check fa-flip' style='color:#ffd700;'></i> Formulating profiling questions...", unsafe_allow_html=True)
                     prompt_instruction = (
@@ -441,7 +462,7 @@ if st.session_state.step == 1:
 
                     time.sleep(0.1) # Force UI to render before blocking network request
                     
-                    response_text = call_gemini(api_key, model_id, prompt_instruction, uploaded_files, require_json=True)
+                    response_text = call_gemini(api_key, model_id, prompt_instruction, mem_files, require_json=True)
                     clean_text = response_text.strip()
                     if clean_text.startswith("```json"): clean_text = clean_text[7:]
                     elif clean_text.startswith("```"): clean_text = clean_text[3:]
