@@ -3,7 +3,12 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 
 def deploy():
-    token = "YOUR_HF_TOKEN_HERE"
+    load_dotenv()
+    token = os.environ.get("HF_TOKEN")
+    if not token:
+        print("Please set HF_TOKEN in your environment or .env file.")
+        return
+    
     api = HfApi(token=token)
     
     # Get username
