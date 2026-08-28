@@ -57,7 +57,7 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
     url = f"{API_ROOT}/models/{model}:generateContent"
     parts = [{"text": prompt}]
     for file in uploaded_files:
-        mime_type = file.type
+        mime_type = getattr(file, "type", "") or "application/octet-stream"
         if mime_type.startswith("text/") or mime_type in ["application/json", "text/markdown", "text/csv"]:
             text_data = file.getvalue().decode("utf-8", errors="replace")
             parts.append({"text": f"\n\n--- Document: {file.name} ---\n{text_data}\n--- End Document ---\n"})
@@ -69,18 +69,24 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
         payload["generationConfig"] = {
             "responseMimeType": "application/json",
             "responseSchema": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "question": {"type": "STRING"},
-                        "options": {
-                            "type": "ARRAY",
-                            "items": {"type": "STRING"}
+                "type": "OBJECT",
+                "properties": {
+                    "questions": {
+                        "type": "ARRAY",
+                        "items": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "question": {"type": "STRING"},
+                                "options": {
+                                    "type": "ARRAY",
+                                    "items": {"type": "STRING"}
+                                }
+                            },
+                            "required": ["question", "options"]
                         }
-                    },
-                    "required": ["question", "options"]
-                }
+                    }
+                },
+                "required": ["questions"]
             }
         }
     token = _session_token()
