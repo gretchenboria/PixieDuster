@@ -7,7 +7,7 @@ interface __BaseEnv_Env {
 	DAILY_PER_USER: "5";
 	DAILY_PER_ANON: "2";
 	DAILY_AUX_PER_USER: "50";
-	DAILY_AUX_PER_ANON: "20";
+	DAILY_AUX_PER_ANON: "30";
 	ALLOWED_ORIGINS: "https://gretchenboria-pixieduster.static.hf.space,https://huggingface.co";
 	DAILY_GLOBAL: "800";
 	MAX_BODY_BYTES: "6291456";
