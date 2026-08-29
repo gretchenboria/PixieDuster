@@ -48,7 +48,7 @@
     "DAILY_AUX_PER_USER": "50",
     "DAILY_AUX_PER_ANON": "20",
     "ALLOWED_ORIGINS": "https://gretchenboria-pixieduster.static.hf.space,https://huggingface.co",
-    "DAILY_GLOBAL": "400",
+    "DAILY_GLOBAL": "800",
     "MAX_BODY_BYTES": "6291456",
     "ALLOWED_MODELS": "gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite"
   }
