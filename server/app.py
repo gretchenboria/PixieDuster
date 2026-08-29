@@ -9,7 +9,9 @@ Deliberate design choices:
 * The proxy mirrors Google's URL shape (``/models/{model}:generateContent``) so
   the CLI reaches it through the same code path as a direct call.
 * Quota is charged per *generateContent* call, not per byte, and is checked and
-  incremented before the upstream call so a slow request cannot be raced.
+  incremented before the upstream call so a slow request cannot be raced. Calls
+  are billed to one of two meters -- personas, or the looser interview/chat
+  budget -- according to the ``X-Op`` header the web app sends.
 * The global ceiling fails **closed**: if the counter store is unavailable, the
   service refuses rather than spending an unknown amount.
 """
@@ -38,6 +40,11 @@ GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 #: Personas one Hugging Face account may generate per UTC day.
 DAILY_PER_USER = int(os.environ.get("DAILY_PER_USER", "5"))
+
+#: Interview questions and try-it-out chat turns per account per UTC day. These
+#: are metered apart from personas so that testing a persona -- or answering the
+#: interview that produces one -- cannot cost you the next persona.
+DAILY_AUX_PER_USER = int(os.environ.get("DAILY_AUX_PER_USER", "50"))
 
 #: Hard ceiling across everyone. This is the number that protects the bill.
 DAILY_GLOBAL = int(os.environ.get("DAILY_GLOBAL", "400"))
@@ -104,12 +111,30 @@ def _resets_at() -> str:
     )
 
 
-def _counts(user: str) -> tuple[int, int]:
-    """(this user's count today, everyone's count today)."""
+def _meter_key(user: str, op: str) -> str:
+    """The counter row an op is billed against.
+
+    Personas keep the bare username so existing rows keep counting; the looser
+    interview/chat budget gets its own row.
+    """
+    return f"{user}#aux" if op == "aux" else user
+
+
+def _op_of(header: str) -> str:
+    """Classify a call from its ``X-Op`` header.
+
+    The CLI sends no header and is always generating a persona, so anything
+    absent or unrecognised reads as ``persona`` -- the conservative default.
+    """
+    return "aux" if header.strip().lower() in {"interview", "chat"} else "persona"
+
+
+def _counts(key: str) -> tuple[int, int]:
+    """(this row's count today, everyone's count today)."""
     with _connect() as conn:
         day = _today()
         mine = conn.execute(
-            "SELECT n FROM usage WHERE day=? AND who=?", (day, user)
+            "SELECT n FROM usage WHERE day=? AND who=?", (day, key)
         ).fetchone()
         total = conn.execute(
             "SELECT COALESCE(SUM(n), 0) FROM usage WHERE day=?", (day,)
@@ -117,21 +142,21 @@ def _counts(user: str) -> tuple[int, int]:
     return (mine[0] if mine else 0), (total[0] if total else 0)
 
 
-def _charge(user: str) -> None:
+def _charge(key: str) -> None:
     with _connect() as conn:
         conn.execute(
             "INSERT INTO usage (day, who, n) VALUES (?, ?, 1) "
             "ON CONFLICT(day, who) DO UPDATE SET n = n + 1",
-            (_today(), user),
+            (_today(), key),
         )
         conn.commit()
 
 
-def _refund(user: str) -> None:
+def _refund(key: str) -> None:
     """Give a charge back when the upstream call never happened."""
     with _connect() as conn:
         conn.execute(
-            "UPDATE usage SET n = MAX(n - 1, 0) WHERE day=? AND who=?", (_today(), user)
+            "UPDATE usage SET n = MAX(n - 1, 0) WHERE day=? AND who=?", (_today(), key)
         )
         conn.commit()
 
@@ -195,14 +220,20 @@ def health() -> dict[str, Any]:
 def me(user: str = Depends(whoami)) -> dict[str, Any]:
     """Who the caller is, and how much quota is left today."""
     try:
-        mine, _ = _counts(user)
+        mine, _ = _counts(_meter_key(user, "persona"))
+        aux, _ = _counts(_meter_key(user, "aux"))
     except sqlite3.Error:
         raise HTTPException(503, "Quota store unavailable. Try again shortly.")
     return {
         "user": user,
+        # used/limit/remaining are the persona allowance, unchanged.
         "used": mine,
         "limit": DAILY_PER_USER,
         "remaining": max(DAILY_PER_USER - mine, 0),
+        # The interview + try-it-out chat budget, which personas do not touch.
+        "aux_used": aux,
+        "aux_limit": DAILY_AUX_PER_USER,
+        "aux_remaining": max(DAILY_AUX_PER_USER - aux, 0),
         "resets_at": _resets_at(),
     }
 
@@ -214,7 +245,12 @@ def models(user: str = Depends(whoami)) -> dict[str, Any]:
 
 
 @app.post("/api/models/{spec:path}")
-async def generate(spec: str, request: Request, user: str = Depends(whoami)) -> Any:
+async def generate(
+    spec: str,
+    request: Request,
+    user: str = Depends(whoami),
+    x_op: str = Header(default=""),
+) -> Any:
     """Proxy ``{model}:generateContent`` to Gemini, metered.
 
     ``spec`` arrives as ``gemini-3.6-flash:generateContent``.
@@ -242,23 +278,27 @@ async def generate(spec: str, request: Request, user: str = Depends(whoami)) -> 
 
     # Check and charge before spending, so concurrent calls cannot race past
     # the ceiling. Fail closed if the store is unreachable.
+    op = _op_of(x_op)
+    key = _meter_key(user, op)
+    cap = DAILY_AUX_PER_USER if op == "aux" else DAILY_PER_USER
     try:
         with _lock:
-            mine, total = _counts(user)
+            mine, total = _counts(key)
             if total >= DAILY_GLOBAL:
                 raise HTTPException(
                     429,
                     "PixieDuster has hit its daily limit for everyone. Try tomorrow, "
                     "or use your own key: pixieduster clone --api-key ...",
                 )
-            if mine >= DAILY_PER_USER:
+            if mine >= cap:
+                what = "test messages" if op == "aux" else "personas"
                 raise HTTPException(
                     429,
-                    f"You have used all {DAILY_PER_USER} personas for today "
+                    f"You have used all {cap} {what} for today "
                     f"(resets {_resets_at()}). Use your own key to keep going: "
                     "pixieduster clone --api-key ...",
                 )
-            _charge(user)
+            _charge(key)
     except sqlite3.Error:
         raise HTTPException(503, "Quota store unavailable, so nothing was sent.")
 
@@ -270,16 +310,16 @@ async def generate(spec: str, request: Request, user: str = Depends(whoami)) -> 
             timeout=UPSTREAM_TIMEOUT,
         )
     except requests.RequestException:
-        _refund(user)
+        _refund(key)
         raise HTTPException(502, "Could not reach Gemini. Nothing was charged.")
 
     if upstream.status_code >= 500:
-        _refund(user)
+        _refund(key)
 
     try:
         payload = upstream.json()
     except ValueError:
-        _refund(user)
+        _refund(key)
         raise HTTPException(502, "Gemini returned a response that was not JSON.")
 
     # Never let an upstream error echo anything about our key.

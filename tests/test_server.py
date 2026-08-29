@@ -65,10 +65,13 @@ def server(tmp_path, monkeypatch):
     return client
 
 
-def _gen(client, who="alice", model="gemini-3.6-flash"):
+def _gen(client, who="alice", model="gemini-3.6-flash", op=None):
+    headers = {"Authorization": f"Bearer {who}"}
+    if op:
+        headers["X-Op"] = op
     return client.post(
         f"/api/models/{model}:generateContent",
-        headers={"Authorization": f"Bearer {who}"},
+        headers=headers,
         json={"contents": [{"parts": [{"text": "hi"}]}]},
     )
 
@@ -97,6 +100,35 @@ def test_per_user_limit_is_enforced(server):
     blocked = _gen(server, "alice")
     assert blocked.status_code == 429
     assert "own key" in blocked.json()["detail"]
+
+
+def test_testing_a_persona_does_not_spend_the_persona_allowance(server):
+    """The bug this guards: one persona costs two calls (interview + generate),
+    which used to leave a 2-per-day visitor blocked on their first chat turn."""
+    assert _gen(server, "alice", op="interview").status_code == 200
+    assert _gen(server, "alice").status_code == 200
+    assert _gen(server, "alice", op="chat").status_code == 200
+
+    body = server.get("/api/me", headers={"Authorization": "Bearer alice"}).json()
+    assert body["used"] == 1 and body["remaining"] == 1
+    assert body["aux_used"] == 2
+
+
+def test_aux_calls_have_their_own_ceiling(server):
+    server.module.DAILY_AUX_PER_USER = 1
+    assert _gen(server, "alice", op="chat").status_code == 200
+    blocked = _gen(server, "alice", op="chat")
+    assert blocked.status_code == 429
+    assert "test messages" in blocked.json()["detail"]
+    # The persona allowance is untouched by a chat that ran out.
+    assert _gen(server, "alice").status_code == 200
+
+
+def test_an_unknown_op_is_billed_as_a_persona(server):
+    """The CLI sends no X-Op, so the default must be the conservative one."""
+    assert _gen(server, "alice", op="nonsense").status_code == 200
+    body = server.get("/api/me", headers={"Authorization": "Bearer alice"}).json()
+    assert body["used"] == 1
 
 
 def test_one_user_cannot_exhaust_another(server):
