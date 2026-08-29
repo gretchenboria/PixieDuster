@@ -93,14 +93,17 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
     if token.startswith("ERROR:"):
         raise Exception(f"Session Token Debug: {token}")
 
-    for attempt in range(3):
+    for attempt in range(10):
         response = requests.post(url, headers=_api_headers(), json=payload)
         if response.ok:
             return response.json()["candidates"][0]["content"]["parts"][0]["text"]
         if response.status_code not in [408, 429, 500, 502, 503, 504]:
             break
-        if attempt < 2:
-            time.sleep(1.0 * (2 ** attempt))
+        if attempt < 9:
+            delay = min(2.0 * (1.5 ** attempt), 10.0)
+            if response.status_code == 503:
+                st.toast(f"Gemini is busy. Retrying in {int(delay)}s... (Attempt {attempt+1}/10)", icon="⏳")
+            time.sleep(delay)
             
     raise Exception(_friendly_error(response))
 
@@ -116,14 +119,17 @@ def chat_gemini(api_key, model, sys_prompt, history, user_input):
         "contents": contents
     }
     
-    for attempt in range(3):
+    for attempt in range(10):
         response = requests.post(url, headers=_api_headers(), json=payload)
         if response.ok:
             return response.json()["candidates"][0]["content"]["parts"][0]["text"]
         if response.status_code not in [408, 429, 500, 502, 503, 504]:
             break
-        if attempt < 2:
-            time.sleep(1.0 * (2 ** attempt))
+        if attempt < 9:
+            delay = min(2.0 * (1.5 ** attempt), 10.0)
+            if response.status_code == 503:
+                st.toast(f"Gemini is busy. Retrying in {int(delay)}s... (Attempt {attempt+1}/10)", icon="⏳")
+            time.sleep(delay)
             
     raise Exception(_friendly_error(response))
 
