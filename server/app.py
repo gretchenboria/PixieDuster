@@ -47,7 +47,7 @@ DAILY_PER_USER = int(os.environ.get("DAILY_PER_USER", "5"))
 DAILY_AUX_PER_USER = int(os.environ.get("DAILY_AUX_PER_USER", "50"))
 
 #: Hard ceiling across everyone. This is the number that protects the bill.
-DAILY_GLOBAL = int(os.environ.get("DAILY_GLOBAL", "400"))
+DAILY_GLOBAL = int(os.environ.get("DAILY_GLOBAL", "800"))
 
 #: Largest request body we will forward, in bytes.
 MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", str(6 * 1024 * 1024)))
