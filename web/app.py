@@ -93,10 +93,16 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
     if token.startswith("ERROR:"):
         raise Exception(f"Session Token Debug: {token}")
 
-    response = requests.post(url, headers=_api_headers(), json=payload)
-    if not response.ok:
-        raise Exception(_friendly_error(response))
-    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    for attempt in range(3):
+        response = requests.post(url, headers=_api_headers(), json=payload)
+        if response.ok:
+            return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        if response.status_code not in [408, 429, 500, 502, 503, 504]:
+            break
+        if attempt < 2:
+            time.sleep(1.0 * (2 ** attempt))
+            
+    raise Exception(_friendly_error(response))
 
 def chat_gemini(api_key, model, sys_prompt, history, user_input):
     url = f"{API_ROOT}/models/{model}:generateContent"
@@ -109,10 +115,17 @@ def chat_gemini(api_key, model, sys_prompt, history, user_input):
         "systemInstruction": {"parts": [{"text": sys_prompt}]},
         "contents": contents
     }
-    response = requests.post(url, headers=_api_headers(), json=payload)
-    if not response.ok:
-        raise Exception(_friendly_error(response))
-    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    
+    for attempt in range(3):
+        response = requests.post(url, headers=_api_headers(), json=payload)
+        if response.ok:
+            return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        if response.status_code not in [408, 429, 500, 502, 503, 504]:
+            break
+        if attempt < 2:
+            time.sleep(1.0 * (2 ** attempt))
+            
+    raise Exception(_friendly_error(response))
 
 
 ANTI_AI_PROMPT_TEMPLATE = """# AI Persona & Style Guide
