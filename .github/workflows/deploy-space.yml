@@ -1,0 +1,51 @@
+name: Sync to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        
+      - name: Prepare Deployment Directory
+        run: |
+          mkdir hf_space
+          cp web/app.py hf_space/
+          cp web/index.html hf_space/
+          cp logo.png hf_space/
+          
+          cat << 'INNER_EOF' > hf_space/README.md
+---
+title: PixieDuster
+emoji: ✨
+colorFrom: yellow
+colorTo: purple
+sdk: static
+pinned: false
+---
+# PixieDuster - AI Persona Cloning
+Upload your writing samples and clone your persona!
+INNER_EOF
+          
+      - name: Push to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "Error: HF_TOKEN secret is not set!"
+            exit 1
+          fi
+          
+          cd hf_space
+          git init
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          
+          git remote add space https://gretchenboria:${HF_TOKEN}@huggingface.co/spaces/gretchenboria/PixieDuster
+          git add .
+          git commit -m "Auto-deploy from GitHub Actions"
+          git push --force space HEAD:main
