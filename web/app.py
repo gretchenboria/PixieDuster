@@ -51,7 +51,7 @@ def _friendly_error(response):
 
 api_key = None  # the key lives on the Worker now
 
-model_id = 'gemini-2.5-flash'
+model_id = 'gemini-3.6-flash'
 
 def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
     url = f"{API_ROOT}/models/{model}:generateContent"
