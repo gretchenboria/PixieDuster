@@ -25,10 +25,18 @@
     }
   ],
 
-  // Short-lived cache of verified Hugging Face identities. Created with:
-  //   npx wrangler kv namespace create QUOTA_KV
+  // Burst throttle, keyed on the caller's identity. The daily caps bound how
+  // much one visitor gets; this bounds how fast they can take it, so a scripted
+  // flood is refused before it costs a charge or reaches Gemini.
+  "ratelimits": [
+    {
+      "name": "BURST_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 12, "period": 60 }
+    }
+  ],
 
-  // Short-lived cache of verified identities. Created with:
+  // Short-lived cache of verified Hugging Face identities. Created with:
   //   npx wrangler kv namespace create QUOTA_KV
   "kv_namespaces": [
     { "binding": "QUOTA_KV", "id": "757150f796d441e7ac01b3e42f1dc9a2" }
@@ -49,6 +57,9 @@
     "DAILY_AUX_PER_ANON": "30",
     "ALLOWED_ORIGINS": "https://gretchenboria-pixieduster.static.hf.space,https://huggingface.co",
     "DAILY_GLOBAL": "800",
+    // Of that ceiling, the most the try-it-out chat may consume, so it cannot
+    // starve persona generation.
+    "DAILY_AUX_GLOBAL": "400",
     "MAX_BODY_BYTES": "6291456",
     "ALLOWED_MODELS": "gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite"
   }

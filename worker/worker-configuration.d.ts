@@ -10,6 +10,8 @@ interface __BaseEnv_Env {
 	DAILY_AUX_PER_ANON: "30";
 	ALLOWED_ORIGINS: "https://gretchenboria-pixieduster.static.hf.space,https://huggingface.co";
 	DAILY_GLOBAL: "800";
+	DAILY_AUX_GLOBAL: "400";
+	BURST_LIMITER: RateLimit;
 	MAX_BODY_BYTES: "6291456";
 	ALLOWED_MODELS: "gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite";
 	GEMINI_API_KEY: string;
@@ -27,7 +29,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "DAILY_PER_USER" | "DAILY_PER_ANON" | "DAILY_AUX_PER_USER" | "DAILY_AUX_PER_ANON" | "ALLOWED_ORIGINS" | "DAILY_GLOBAL" | "MAX_BODY_BYTES" | "ALLOWED_MODELS" | "GEMINI_API_KEY" | "TURNSTILE_SECRET" | "IP_SALT">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "DAILY_PER_USER" | "DAILY_PER_ANON" | "DAILY_AUX_PER_USER" | "DAILY_AUX_PER_ANON" | "ALLOWED_ORIGINS" | "DAILY_GLOBAL" | "DAILY_AUX_GLOBAL" | "MAX_BODY_BYTES" | "ALLOWED_MODELS" | "GEMINI_API_KEY" | "TURNSTILE_SECRET" | "IP_SALT">> {}
 }
 
 // Begin runtime types

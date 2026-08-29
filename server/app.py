@@ -49,6 +49,10 @@ DAILY_AUX_PER_USER = int(os.environ.get("DAILY_AUX_PER_USER", "50"))
 #: Hard ceiling across everyone. This is the number that protects the bill.
 DAILY_GLOBAL = int(os.environ.get("DAILY_GLOBAL", "800"))
 
+#: Of that ceiling, the most the interview + try-it-out chat may consume, so
+#: chat traffic cannot starve the persona generation it exists to show off.
+DAILY_AUX_GLOBAL = int(os.environ.get("DAILY_AUX_GLOBAL", "400"))
+
 #: Largest request body we will forward, in bytes.
 MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", str(6 * 1024 * 1024)))
 
@@ -129,8 +133,12 @@ def _op_of(header: str) -> str:
     return "aux" if header.strip().lower() in {"interview", "chat"} else "persona"
 
 
-def _counts(key: str) -> tuple[int, int]:
-    """(this row's count today, everyone's count today)."""
+def _counts(key: str) -> tuple[int, int, int]:
+    """(this row's count today, everyone's count today, everyone's aux count).
+
+    The aux total sums only the ``#aux`` rows, which is what bounds chat
+    traffic separately from personas.
+    """
     with _connect() as conn:
         day = _today()
         mine = conn.execute(
@@ -139,7 +147,15 @@ def _counts(key: str) -> tuple[int, int]:
         total = conn.execute(
             "SELECT COALESCE(SUM(n), 0) FROM usage WHERE day=?", (day,)
         ).fetchone()
-    return (mine[0] if mine else 0), (total[0] if total else 0)
+        aux = conn.execute(
+            "SELECT COALESCE(SUM(n), 0) FROM usage WHERE day=? AND who LIKE '%#aux'",
+            (day,),
+        ).fetchone()
+    return (
+        (mine[0] if mine else 0),
+        (total[0] if total else 0),
+        (aux[0] if aux else 0),
+    )
 
 
 def _charge(key: str) -> None:
@@ -220,8 +236,8 @@ def health() -> dict[str, Any]:
 def me(user: str = Depends(whoami)) -> dict[str, Any]:
     """Who the caller is, and how much quota is left today."""
     try:
-        mine, _ = _counts(_meter_key(user, "persona"))
-        aux, _ = _counts(_meter_key(user, "aux"))
+        mine, _, _ = _counts(_meter_key(user, "persona"))
+        aux, _, _ = _counts(_meter_key(user, "aux"))
     except sqlite3.Error:
         raise HTTPException(503, "Quota store unavailable. Try again shortly.")
     return {
@@ -283,12 +299,18 @@ async def generate(
     cap = DAILY_AUX_PER_USER if op == "aux" else DAILY_PER_USER
     try:
         with _lock:
-            mine, total = _counts(key)
+            mine, total, aux_total = _counts(key)
             if total >= DAILY_GLOBAL:
                 raise HTTPException(
                     429,
                     "PixieDuster has hit its daily limit for everyone. Try tomorrow, "
                     "or use your own key: pixieduster clone --api-key ...",
+                )
+            if op == "aux" and aux_total >= DAILY_AUX_GLOBAL:
+                raise HTTPException(
+                    429,
+                    "The try-it-out chat has hit its shared daily limit. Generating "
+                    "personas still works; the chat is back tomorrow.",
                 )
             if mine >= cap:
                 what = "test messages" if op == "aux" else "personas"

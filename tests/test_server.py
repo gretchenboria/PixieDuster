@@ -131,6 +131,28 @@ def test_an_unknown_op_is_billed_as_a_persona(server):
     assert body["used"] == 1
 
 
+def test_chat_cannot_starve_persona_generation(server):
+    """The aux ceiling is what keeps chat traffic from eating the whole day."""
+    server.module.DAILY_AUX_GLOBAL = 2
+    assert _gen(server, "alice", op="chat").status_code == 200
+    assert _gen(server, "bob", op="chat").status_code == 200
+
+    blocked = _gen(server, "carol", op="chat")
+    assert blocked.status_code == 429
+    assert "chat has hit its shared daily limit" in blocked.json()["detail"]
+
+    # Personas are unaffected by a chat ceiling that has been reached.
+    assert _gen(server, "carol").status_code == 200
+
+
+def test_persona_calls_do_not_count_against_the_chat_ceiling(server):
+    server.module.DAILY_AUX_GLOBAL = 1
+    assert _gen(server, "alice").status_code == 200
+    assert _gen(server, "bob").status_code == 200
+    # Two personas spent, but the chat ceiling still has its full room.
+    assert _gen(server, "carol", op="chat").status_code == 200
+
+
 def test_one_user_cannot_exhaust_another(server):
     _gen(server, "alice")
     _gen(server, "alice")

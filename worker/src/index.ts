@@ -25,9 +25,16 @@ const IDENTITY_TTL_SECONDS = 300;
 
 const GLOBAL_ROW = "__global__";
 
+/** Aux calls are counted a second time here, so the try-it-out chat cannot eat
+ *  the whole day's budget and starve the persona generation it exists to show
+ *  off. GLOBAL_ROW still counts every call, because the bill does not care. */
+const GLOBAL_AUX_ROW = "__global_aux__";
+
 interface Meter {
   used: number;
   total: number;
+  /** Aux calls today across everyone. Zero for a persona charge. */
+  auxTotal: number;
 }
 
 /**
@@ -257,6 +264,7 @@ async function readMeter(key: string, env: Env): Promise<Meter> {
   return {
     used: mine.results[0]?.n ?? 0,
     total: total.results[0]?.n ?? 0,
+    auxTotal: 0,
   };
 }
 
@@ -268,7 +276,7 @@ async function readMeter(key: string, env: Env): Promise<Meter> {
  * ``key`` is the per-op row (see meterKey). The global row counts every call
  * whatever it was for, because the bill does not care either.
  */
-async function charge(key: string, env: Env): Promise<Meter> {
+async function charge(key: string, op: Op, env: Env): Promise<Meter> {
   const day = today();
   const bump = (who: string) =>
     env.DB.prepare(
@@ -276,19 +284,26 @@ async function charge(key: string, env: Env): Promise<Meter> {
         "ON CONFLICT(day, who) DO UPDATE SET n = n + 1 RETURNING n"
     ).bind(day, who);
 
-  const [mine, total] = await env.DB.batch<{ n: number }>([bump(key), bump(GLOBAL_ROW)]);
+  const rows = chargedRows(key, op);
+  const results = await env.DB.batch<{ n: number }>(rows.map(bump));
   return {
-    used: mine.results[0]?.n ?? 0,
-    total: total.results[0]?.n ?? 0,
+    used: results[0]?.results[0]?.n ?? 0,
+    total: results[1]?.results[0]?.n ?? 0,
+    auxTotal: results[2]?.results[0]?.n ?? 0,
   };
 }
 
+/** Every counter row one call touches, in the order charge() reads them back. */
+function chargedRows(key: string, op: Op): string[] {
+  return op === "aux" ? [key, GLOBAL_ROW, GLOBAL_AUX_ROW] : [key, GLOBAL_ROW];
+}
+
 /** Give a charge back when the request never reached Gemini. */
-async function refund(key: string, env: Env): Promise<void> {
+async function refund(key: string, op: Op, env: Env): Promise<void> {
   const day = today();
   const give = (who: string) =>
     env.DB.prepare("UPDATE usage SET n = MAX(n - 1, 0) WHERE day = ? AND who = ?").bind(day, who);
-  await env.DB.batch([give(key), give(GLOBAL_ROW)]);
+  await env.DB.batch(chargedRows(key, op).map(give));
 }
 
 // ---------------------------------------------------------------------------
@@ -363,24 +378,42 @@ async function generate(
   const op = opOf(request);
   const key = meterKey(user, op);
   const perUser = capFor(user, op, env);
-  const globalCap = num(env.DAILY_GLOBAL, 400);
+  const globalCap = num(env.DAILY_GLOBAL, 800);
+  const auxGlobalCap = num(env.DAILY_AUX_GLOBAL, 400);
+
+  // Throttle bursts before charging: a scripted flood should cost nothing and
+  // reach nothing. The daily caps bound the total; this bounds the rate.
+  if (env.BURST_LIMITER) {
+    const { success } = await env.BURST_LIMITER.limit({ key: user });
+    if (!success) {
+      return fail(429, "That was a lot of requests at once. Wait a moment and try again.");
+    }
+  }
 
   let meter: Meter;
   try {
-    meter = await charge(key, env);
+    meter = await charge(key, op, env);
   } catch {
     return fail(503, "Quota store unavailable, so nothing was sent.");
   }
 
   if (meter.total > globalCap) {
-    ctx.waitUntil(refund(key, env));
+    ctx.waitUntil(refund(key, op, env));
     return fail(
       429,
       "PixieDuster has hit its daily limit for everyone. Try tomorrow, or use your own key: pixieduster clone --api-key ..."
     );
   }
+  if (op === "aux" && meter.auxTotal > auxGlobalCap) {
+    ctx.waitUntil(refund(key, op, env));
+    return fail(
+      429,
+      "The try-it-out chat has hit its shared daily limit. Generating personas still works; " +
+        "the chat is back tomorrow."
+    );
+  }
   if (meter.used > perUser) {
-    ctx.waitUntil(refund(key, env));
+    ctx.waitUntil(refund(key, op, env));
     // Point people at the next step that actually applies to them.
     const nextStep = user.startsWith("anon:")
       ? "Sign in with a Hugging Face account for a larger daily allowance, or install the CLI and use your own key."
@@ -403,12 +436,12 @@ async function generate(
       body,
     });
   } catch {
-    await refund(key, env);
+    await refund(key, op, env);
     return fail(502, "Could not reach Gemini. Nothing was charged.");
   }
 
   if (upstream.status >= 500) {
-    ctx.waitUntil(refund(key, env));
+    ctx.waitUntil(refund(key, op, env));
   }
 
   if (!upstream.ok) {
