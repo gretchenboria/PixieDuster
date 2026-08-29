@@ -30,13 +30,43 @@ interface Meter {
   total: number;
 }
 
+/**
+ * What a call was for. Only `persona` spends the persona allowance; the
+ * interview questions and the try-it-out chat draw on a separate, looser
+ * budget so that testing a persona cannot cost you the next one.
+ *
+ * The CLI sends no header and is always generating a persona, so an absent or
+ * unrecognised value means `persona` -- the conservative reading.
+ */
+type Op = "persona" | "aux";
+
+function opOf(request: Request): Op {
+  const raw = (request.headers.get("x-op") ?? "").toLowerCase();
+  return raw === "interview" || raw === "chat" ? "aux" : "persona";
+}
+
+/** The counter row an op is billed against. Personas keep the bare key so
+ *  today's existing rows keep counting. */
+function meterKey(user: string, op: Op): string {
+  return op === "aux" ? `${user}#aux` : user;
+}
+
+/** Daily allowance for an op, which is smaller for anonymous visitors. */
+function capFor(user: string, op: Op, env: Env): number {
+  const anon = user.startsWith("anon:");
+  if (op === "aux") {
+    return anon ? num(env.DAILY_AUX_PER_ANON, 20) : num(env.DAILY_AUX_PER_USER, 50);
+  }
+  return anon ? num(env.DAILY_PER_ANON, 2) : num(env.DAILY_PER_USER, 5);
+}
+
 function corsHeaders(request: Request, env: Env): Record<string, string> {
   const origin = request.headers.get("origin") ?? "";
   const allowed = (env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
   const ok = allowed.includes(origin);
   return {
     "access-control-allow-origin": ok ? origin : allowed[0] ?? "",
-    "access-control-allow-headers": "authorization, content-type, x-turnstile-token, x-session",
+    "access-control-allow-headers": "authorization, content-type, x-turnstile-token, x-session, x-op",
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-max-age": "86400",
     vary: "origin",
@@ -218,10 +248,10 @@ async function ensureSchema(env: Env): Promise<void> {
   );
 }
 
-async function readMeter(user: string, env: Env): Promise<Meter> {
+async function readMeter(key: string, env: Env): Promise<Meter> {
   const day = today();
   const [mine, total] = await env.DB.batch<{ n: number }>([
-    env.DB.prepare("SELECT n FROM usage WHERE day = ? AND who = ?").bind(day, user),
+    env.DB.prepare("SELECT n FROM usage WHERE day = ? AND who = ?").bind(day, key),
     env.DB.prepare("SELECT n FROM usage WHERE day = ? AND who = ?").bind(day, GLOBAL_ROW),
   ]);
   return {
@@ -231,11 +261,14 @@ async function readMeter(user: string, env: Env): Promise<Meter> {
 }
 
 /**
- * Increment the caller's counter and the global counter in one transaction,
+ * Increment the op's counter and the global counter in one transaction,
  * returning both post-increment values. Charging before the upstream call is
  * what makes the ceiling race-proof.
+ *
+ * ``key`` is the per-op row (see meterKey). The global row counts every call
+ * whatever it was for, because the bill does not care either.
  */
-async function charge(user: string, env: Env): Promise<Meter> {
+async function charge(key: string, env: Env): Promise<Meter> {
   const day = today();
   const bump = (who: string) =>
     env.DB.prepare(
@@ -243,7 +276,7 @@ async function charge(user: string, env: Env): Promise<Meter> {
         "ON CONFLICT(day, who) DO UPDATE SET n = n + 1 RETURNING n"
     ).bind(day, who);
 
-  const [mine, total] = await env.DB.batch<{ n: number }>([bump(user), bump(GLOBAL_ROW)]);
+  const [mine, total] = await env.DB.batch<{ n: number }>([bump(key), bump(GLOBAL_ROW)]);
   return {
     used: mine.results[0]?.n ?? 0,
     total: total.results[0]?.n ?? 0,
@@ -251,11 +284,11 @@ async function charge(user: string, env: Env): Promise<Meter> {
 }
 
 /** Give a charge back when the request never reached Gemini. */
-async function refund(user: string, env: Env): Promise<void> {
+async function refund(key: string, env: Env): Promise<void> {
   const day = today();
   const give = (who: string) =>
     env.DB.prepare("UPDATE usage SET n = MAX(n - 1, 0) WHERE day = ? AND who = ?").bind(day, who);
-  await env.DB.batch([give(user), give(GLOBAL_ROW)]);
+  await env.DB.batch([give(key), give(GLOBAL_ROW)]);
 }
 
 // ---------------------------------------------------------------------------
@@ -271,15 +304,22 @@ function health(env: Env): Response {
 }
 
 async function me(user: string, env: Env): Promise<Response> {
-  const limit = user.startsWith("anon:")
-    ? num(env.DAILY_PER_ANON, 2)
-    : num(env.DAILY_PER_USER, 5);
-  const { used } = await readMeter(user, env);
+  const limit = capFor(user, "persona", env);
+  const auxLimit = capFor(user, "aux", env);
+  const [{ used }, { used: auxUsed }] = await Promise.all([
+    readMeter(meterKey(user, "persona"), env),
+    readMeter(meterKey(user, "aux"), env),
+  ]);
   return json({
     user: user.startsWith("anon:") ? "guest" : user,
+    // `used`/`limit`/`remaining` are the persona allowance, unchanged.
     used,
     limit,
     remaining: Math.max(limit - used, 0),
+    // The interview + try-it-out chat budget, which personas do not touch.
+    aux_used: auxUsed,
+    aux_limit: auxLimit,
+    aux_remaining: Math.max(auxLimit - auxUsed, 0),
     resets_at: resetsAt(),
   });
 }
@@ -320,35 +360,36 @@ async function generate(
     return fail(413, `That request is over the ${Math.round(maxBytes / 1_048_576)} MB limit.`);
   }
 
-  const perUser = user.startsWith("anon:")
-    ? num(env.DAILY_PER_ANON, 2)
-    : num(env.DAILY_PER_USER, 5);
+  const op = opOf(request);
+  const key = meterKey(user, op);
+  const perUser = capFor(user, op, env);
   const globalCap = num(env.DAILY_GLOBAL, 400);
 
   let meter: Meter;
   try {
-    meter = await charge(user, env);
+    meter = await charge(key, env);
   } catch {
     return fail(503, "Quota store unavailable, so nothing was sent.");
   }
 
   if (meter.total > globalCap) {
-    ctx.waitUntil(refund(user, env));
+    ctx.waitUntil(refund(key, env));
     return fail(
       429,
       "PixieDuster has hit its daily limit for everyone. Try tomorrow, or use your own key: pixieduster clone --api-key ..."
     );
   }
   if (meter.used > perUser) {
-    ctx.waitUntil(refund(user, env));
+    ctx.waitUntil(refund(key, env));
     // Point people at the next step that actually applies to them.
     const nextStep = user.startsWith("anon:")
       ? "Sign in with a Hugging Face account for a larger daily allowance, or install the CLI and use your own key."
       : "Use your own key to keep going: pixieduster clone --api-key ...";
-    return fail(
-      429,
-      `You have used all ${perUser} personas for today (resets ${resetsAt()}). ${nextStep}`
-    );
+    const what =
+      op === "aux"
+        ? `all ${perUser} test messages for today`
+        : `all ${perUser} personas for today`;
+    return fail(429, `You have used ${what} (resets ${resetsAt()}). ${nextStep}`);
   }
 
   let upstream: Response;
@@ -362,12 +403,12 @@ async function generate(
       body,
     });
   } catch {
-    await refund(user, env);
+    await refund(key, env);
     return fail(502, "Could not reach Gemini. Nothing was charged.");
   }
 
   if (upstream.status >= 500) {
-    ctx.waitUntil(refund(user, env));
+    ctx.waitUntil(refund(key, env));
   }
 
   if (!upstream.ok) {

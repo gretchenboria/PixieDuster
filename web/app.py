@@ -30,8 +30,14 @@ def _session_token():
         return ""
 
 
-def _api_headers():
-    headers = {"Content-Type": "application/json"}
+def _api_headers(op="persona"):
+    """Headers for a proxy call.
+
+    ``op`` tells the proxy which meter to bill: only "persona" spends the
+    persona allowance, so answering the interview or trying the persona out in
+    chat cannot cost you the next persona.
+    """
+    headers = {"Content-Type": "application/json", "X-Op": op}
     token = _session_token()
     if token:
         headers["x-session"] = token
@@ -53,7 +59,7 @@ api_key = None  # the key lives on the Worker now
 
 model_id = 'gemini-3.6-flash'
 
-def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
+def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False, op="persona"):
     url = f"{API_ROOT}/models/{model}:generateContent"
     parts = [{"text": prompt}]
     for file in uploaded_files:
@@ -94,7 +100,7 @@ def call_gemini(api_key, model, prompt, uploaded_files=[], require_json=False):
         raise Exception(f"Session Token Debug: {token}")
 
     for attempt in range(10):
-        response = requests.post(url, headers=_api_headers(), json=payload)
+        response = requests.post(url, headers=_api_headers(op), json=payload)
         if response.ok:
             return response.json()["candidates"][0]["content"]["parts"][0]["text"]
         if response.status_code not in [408, 429, 500, 502, 503, 504]:
@@ -120,7 +126,7 @@ def chat_gemini(api_key, model, sys_prompt, history, user_input):
     }
     
     for attempt in range(10):
-        response = requests.post(url, headers=_api_headers(), json=payload)
+        response = requests.post(url, headers=_api_headers("chat"), json=payload)
         if response.ok:
             return response.json()["candidates"][0]["content"]["parts"][0]["text"]
         if response.status_code not in [408, 429, 500, 502, 503, 504]:
@@ -487,7 +493,7 @@ if st.session_state.step == 1:
 
                     time.sleep(0.1) # Force UI to render before blocking network request
                     
-                    response_text = call_gemini(api_key, model_id, prompt_instruction, mem_files, require_json=True)
+                    response_text = call_gemini(api_key, model_id, prompt_instruction, mem_files, require_json=True, op="interview")
                     clean_text = response_text.strip()
                     if clean_text.startswith("```json"): clean_text = clean_text[7:]
                     elif clean_text.startswith("```"): clean_text = clean_text[3:]
