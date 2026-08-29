@@ -48,7 +48,7 @@ __all__ = [
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 #: Model used unless overridden by --model or [settings] model.
-DEFAULT_MODEL = "gemini-3.6-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 #: Total tries for one request, including the first. 3 means two retries.
 MAX_ATTEMPTS = 3
