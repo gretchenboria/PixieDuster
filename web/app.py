@@ -709,6 +709,19 @@ exists.
                 unsafe_allow_html=True,
             )
 
+    # The download buttons go through stlite's media endpoint, which fails
+    # silently in some browsers -- the click does nothing at all, with no error.
+    # Copying the text needs none of that machinery, so it always works. The
+    # three agent files are byte-identical, so two blocks cover all four.
+    with st.expander("Buttons not downloading? Copy the text instead"):
+        st.caption("persona.md - paste into any AI")
+        st.code(st.session_state.final_prompt, language="markdown")
+        st.caption("AGENTS.md / CLAUDE.md / GEMINI.md - identical to each other")
+        st.code(
+            AGENT_PREAMBLE + "\n\n" + st.session_state.final_prompt,
+            language="markdown",
+        )
+
     st.markdown(
         "<p style='color:#8a7da3; font-size:0.82rem; margin-top:10px;'>"
         "The three agent files carry a short preamble telling the tool this governs how it "
